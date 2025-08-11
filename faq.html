@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>FAQ - lingk</title>
+    <link rel="icon" type="image/svg+xml" href="logo/lingk-favicon.svg" />
+    <link href="https://fonts.cdnfonts.com/css/tt-fors-trial" rel="stylesheet">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,300,0,0" />
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="subpage">
+    <header class="subpage-header">
+        <a href="index.html" class="back-link">
+            <span class="material-symbols-outlined">arrow_back_ios_new</span>
+        </a>
+        <h1>Frequently Asked Questions</h1>
+    </header>
+
+    <main class="subpage-content">
+        <div class="faq-intro">
+            <p>Welcome to our FAQ! Here, you'll find answers to common questions about <strong>lingk</strong>, including how to watch free live TV, our privacy practices, and tips to enhance your experience. Looking for a specific station or just want to discover something new? <strong>lingk</strong> makes it easy.</p>
+        </div>
+
+        <div class="faq-list">
+            <div class="faq-item">
+                <div class="faq-question">
+                    <span>Is lingk free to use?</span>
+                    <span class="material-symbols-outlined">expand_more</span>
+                </div>
+                <div class="faq-answer">
+                    <p>Absolutely! There's no cost or subscription—just click on a channel and start watching.</p>
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-question">
+                    <span>What is IPTV?</span>
+                    <span class="material-symbols-outlined">expand_more</span>
+                </div>
+                <div class="faq-answer">
+                    <p>IPTV (Internet Protocol Television) is a way to watch television content over the internet instead of through traditional cable or satellite. We gather free, publicly available IPTV streams, allowing you to explore global news, movies, live sports, and more from wherever you are.</p>
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-question">
+                    <span>How do you select your TV channels?</span>
+                    <span class="material-symbols-outlined">expand_more</span>
+                </div>
+                <div class="faq-answer">
+                    <p>Our channel listings come directly from the dedicated <a href="https://github.com/iptv-org/iptv" target="_blank" rel="noopener noreferrer" class="inline-link">IPTV-org</a> community on GitHub. We don't add or curate channels ourselves; we rely on their fantastic, publicly maintained directory. If you want to contribute, please visit their repository.</p>
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-question">
+                    <span>Can I suggest a new TV channel?</span>
+                    <span class="material-symbols-outlined">expand_more</span>
+                </div>
+                <div class="faq-answer">
+                    <p>Definitely! While we don't manage the database, you can suggest new channels directly to the <a href="https://github.com/iptv-org/iptv" target="_blank" rel="noopener noreferrer" class="inline-link">IPTV-org</a> team. Your contributions help keep the channel lineup fresh and comprehensive for everyone.</p>
+                </div>
+            </div>
+            
+            <div class="faq-item">
+                <div class="faq-question">
+                    <span>Is watching TV on lingk legal?</span>
+                    <span class="material-symbols-outlined">expand_more</span>
+                </div>
+                <div class="faq-answer">
+                    <p>Yes. We only provide links to publicly accessible streams and do not host any content ourselves. Every stream is believed to be provided by its legal copyright holder for public distribution. You can find more details in the Legal Disclaimer on our "About Us" page.</p>
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-question">
+                    <span>Why are some channels unavailable?</span>
+                    <span class="material-symbols-outlined">expand_more</span>
+                </div>
+                <div class="faq-answer">
+                    <p>We put your privacy and security first. We only list channels that use secure HTTPS connections and are configured to allow streaming on external websites. If a channel doesn't meet our security standards or is restricted by its owner, we cannot list it.</p>
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-question">
+                    <span>How can I report a broken channel link?</span>
+                    <span class="material-symbols-outlined">expand_more</span>
+                </div>
+                <div class="faq-answer">
+                    <p>If a channel is temporarily down, we recommend checking back later. For persistent issues, the best way to help is by notifying the <a href="https://github.com/iptv-org/iptv" target="_blank" rel="noopener noreferrer" class="inline-link">IPTV-org</a> team on GitHub. They are responsible for maintaining the directory and ensuring the streams work correctly.</p>
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-question">
+                    <span>How does lingk protect my privacy?</span>
+                    <span class="material-symbols-outlined">expand_more</span>
+                </div>
+                <div class="faq-answer">
+                    <p>Your privacy is a top priority. We do not collect, store, or share any of your personal data, and we do not use third-party trackers. You can watch live TV with the peace of mind that your information remains private.</p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const faqItems = document.querySelectorAll('.faq-item');
+
+            faqItems.forEach(item => {
+                const question = item.querySelector('.faq-question');
+                question.addEventListener('click', () => {
+                    const currentlyActive = document.querySelector('.faq-item.active');
+                    if (currentlyActive && currentlyActive !== item) {
+                        currentlyActive.classList.remove('active');
+                    }
+                    item.classList.toggle('active');
+                });
+            });
+        });
+    </script>
+</body>
+</html>

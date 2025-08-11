@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Search - lingk</title>
+    
+    <link rel="icon" type="image/png" href="logo/favicon-96x96.png" sizes="96x96" />
+    <link rel="icon" type="image/svg+xml" href="logo/favicon.svg" />
+    <link rel="shortcut icon" href="logo/favicon.ico" />
+    <link rel="apple-touch-icon" sizes="180x180" href="logo/apple-touch-icon.png" />
+    <link rel="manifest" href="logo/site.webmanifest" />
+    <link href="https://fonts.cdnfonts.com/css/tt-fors-trial" rel="stylesheet">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,200,0..1,0" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/lipis/flag-icons@7/css/flag-icons.min.css"/>
+    <link rel="stylesheet" href="css/style.css">
+    
+    <style>
+        #initial-message, #loading-message { color: var(--text-secondary); text-align: center; padding: 50px 0; font-size: 1rem; }
+        .search-bar { display: flex; align-items: center; padding: 5px 20px; margin: 0 20px 20px 20px; border: 1px solid var(--text-secondary); border-radius: 50px; background-color: var(--card-background); }
+        .search-bar .material-symbols-outlined { color: var(--text-secondary); font-size: 1.5rem; margin-right: 10px; }
+        .search-bar input { width: 100%; background: none; border: none; outline: none; color: #fff; font-family: 'TT Fors Trial', sans-serif; font-size: 1rem; padding: 10px 0; }
+        #search-results { padding: 0 20px; }
+    </style>
+</head>
+<body class="subpage">
+    <header class="subpage-header">
+        <a href="index.html" class="back-link">
+            <span class="material-symbols-outlined">arrow_back_ios_new</span>
+        </a>
+        <h1>Search</h1>
+    </header>
+
+    <main class="subpage-content search-container">
+        <div class="search-bar">
+            <span class="material-symbols-outlined">search</span>
+            <input type="text" id="search-input" placeholder="Search for channels..." autocomplete="off" autofocus disabled>
+        </div>
+
+        <div id="search-results">
+             <p id="loading-message">Loading channel database...</p>
+             <p id="initial-message" style="display:none;">Start typing to find your favorite channels.</p>
+        </div>
+    </main>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            const searchInput = document.getElementById('search-input');
+            const searchResultsContainer = document.getElementById('search-results');
+            const loadingMessage = document.getElementById('loading-message');
+            const initialMessage = document.getElementById('initial-message');
+            let allStreams = [];
+
+            async function fetchAndParseM3U() {
+                const M3U_URL = "https://iptv-org.github.io/iptv/index.m3u";
+                try {
+                    const response = await fetch(M3U_URL);
+                    const m3uText = await response.text();
+                    const lines = m3uText.trim().split('\n');
+                    const parsedStreams = [];
+                    for (let i = 0; i < lines.length; i++) {
+                        if (lines[i].startsWith('#EXTINF:')) {
+                            const infoLine = lines[i], urlLine = lines[i + 1];
+                            if (urlLine && urlLine.startsWith('http')) {
+                                const name = infoLine.split(',').pop()?.trim() || 'Unknown';
+                                const logoMatch = infoLine.match(/tvg-logo="([^"]*)"/);
+                                parsedStreams.push({ 
+                                    name, 
+                                    manifestUri: urlLine.trim(),
+                                    logo: logoMatch ? logoMatch[1] : 'logo/favicon.svg'
+                                });
+                            }
+                        }
+                    }
+                    return parsedStreams;
+                } catch (error) {
+                    console.error("Failed to fetch M3U on search page:", error);
+                    return [];
+                }
+            }
+            
+            allStreams = await fetchAndParseM3U();
+            if (allStreams.length > 0) {
+                loadingMessage.style.display = 'none';
+                initialMessage.style.display = 'block';
+                searchInput.disabled = false;
+                searchInput.focus();
+            } else {
+                loadingMessage.textContent = 'Failed to load channels. Please try again later.';
+            }
+
+            const renderResults = (results) => {
+                searchResultsContainer.innerHTML = '';
+                if (results.length === 0) {
+                    searchResultsContainer.innerHTML = '<p style="color: var(--text-secondary); text-align: center; padding: 50px 0;">No channels found.</p>';
+                    return;
+                }
+
+                const list = document.createElement('div');
+                list.className = 'channel-list';
+                results.forEach(stream => {
+                    const item = document.createElement('div');
+                    item.className = 'channel-list-item';
+                    
+                    // --- MODIFIED: Simplified layout for search results ---
+                    item.innerHTML = `
+                        <div class="channel-info-left">
+                            <img src="${stream.logo}" alt="${stream.name} Logo" class="channel-logo" onerror="this.src='logo/favicon.svg';">
+                            <span class="channel-name">${stream.name}</span>
+                        </div>
+                        <div class="channel-info-right">
+                            <span class="material-symbols-outlined">sensors</span>
+                        </div>`;
+
+                    item.addEventListener('click', () => {
+                        window.location.href = `index.html?play=${encodeURIComponent(stream.name.replace(/\s+/g, '-'))}`;
+                    });
+                    list.appendChild(item);
+                });
+                searchResultsContainer.appendChild(list);
+            };
+
+            searchInput.addEventListener('input', (e) => {
+                const query = e.target.value.toLowerCase().trim();
+                initialMessage.style.display = 'none';
+                if (query.length > 1) {
+                    const filteredStreams = allStreams.filter(stream => stream.name.toLowerCase().includes(query));
+                    renderResults(filteredStreams);
+                } else {
+                    searchResultsContainer.innerHTML = '';
+                    if (query.length === 0) {
+                        initialMessage.style.display = 'block';
+                    }
+                }
+            });
+        });
+    </script>
+</body>
+</html>
