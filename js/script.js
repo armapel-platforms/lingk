@@ -1,7 +1,7 @@
 // js/script.js
 document.addEventListener('DOMContentLoaded', () => {
 
-    // --- Element Selectors (Country Picker Removed) ---
+    // --- Element Selectors ---
     const allSelectors = {
         header: document.querySelector("header"),
         menuBtn: document.getElementById("menu-btn"),
@@ -20,17 +20,16 @@ document.addEventListener('DOMContentLoaded', () => {
         loadMoreBtn: document.getElementById("load-more-btn")
     };
     
-    // --- Global State (Country Filter Removed) ---
+    // --- Global State ---
     let player = null, ui = null;
     const CHANNELS_PER_PAGE = 50;
     let currentlyDisplayedCount = 0;
     let currentFilteredStreams = [];
     let allStreams = [];
-    let currentFilters = { category: "ALL" };
+    let currentFilters = { category: "All" }; // Default filter
 
     /**
      * --- CORE LOGIC: Fetch and Parse the M3U file ---
-     * This function runs once to download and process the channel list.
      */
     async function fetchAndParseM3U() {
         const M3U_URL = "https://iptv-org.github.io/iptv/index.m3u";
@@ -38,9 +37,7 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log("Fetching M3U file...");
         try {
             const response = await fetch(M3U_URL);
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             const m3uText = await response.text();
             console.log("M3U file fetched. Parsing...");
 
@@ -58,16 +55,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         const countryMatch = infoLine.match(/tvg-country="([^"]*)"/);
                         const langMatch = infoLine.match(/tvg-language="([^"]*)"/);
                         const categoryMatch = infoLine.match(/group-title="([^"]*)"/);
+                        const category = categoryMatch ? categoryMatch[1].split(';')[0] : 'General';
 
-                        parsedStreams.push({
-                            name: name,
-                            logo: logoMatch ? logoMatch[1] : 'logo/favicon.svg',
-                            manifestUri: urlLine.trim(),
-                            type: 'hls',
-                            country: countryMatch ? countryMatch[1] : 'XX',
-                            language: langMatch ? langMatch[1] : 'N/A',
-                            category: categoryMatch ? categoryMatch[1].split(';')[0] : 'General'
-                        });
+                        parsedStreams.push({ name, logo: logoMatch ? logoMatch[1] : 'logo/favicon.svg', manifestUri: urlLine.trim(), type: 'hls', country: countryMatch ? countryMatch[1] : 'XX', language: langMatch ? langMatch[1] : 'N/A', category });
                     }
                 }
             }
@@ -86,30 +76,68 @@ document.addEventListener('DOMContentLoaded', () => {
      * --- UI RENDERING FUNCTIONS ---
      */
 
-    // Renders the category pills and sets up their click events
+    // --- MODIFIED: Renders category pills with specific ordering ---
     const renderCategoryPills = () => {
-        const categories = {ALL:"apps",General:"tv_gen",News:"newspaper",Sports:"sports_basketball",Kids:"smart_toy",Music:"music_note",Movies:"theaters",Entertainment:"movie",Lifestyle:"restaurant"};
-        allSelectors.categoryPillsContainer.innerHTML = "";
-        for (const categoryName in categories) {
-            const button = document.createElement("button");
-            button.className = "pill";
-            button.dataset.category = categoryName;
-            if (categoryName === "ALL") {
-                button.classList.add("active");
-            }
-            button.innerHTML = `<span class="material-symbols-outlined">${categories[categoryName]}</span>`;
-            button.addEventListener("click", () => {
-                allSelectors.categoryPillsContainer.querySelector(".pill.active")?.classList.remove("active");
-                button.classList.add("active");
-                currentFilters.category = categoryName;
-                allSelectors.channelListHeader.textContent = categoryName === 'ALL' ? 'All Channels' : categoryName;
-                applyFiltersAndRender();
-            });
-            allSelectors.categoryPillsContainer.appendChild(button);
+        const iconMap = {
+            "News": "newspaper", "Sports": "sports_basketball", "Kids": "smart_toy", "Music": "music_note", 
+            "Movies": "theaters", "Entertainment": "movie", "Lifestyle": "restaurant", "General": "tv_gen", 
+            "Auto": "directions_car", "Animation": "person_pin", "Business": "business_center", "Classic": "history", 
+            "Comedy": "comedy_mask", "Cooking": "cooking", "Culture": "palette", "Documentary": "menu_book", 
+            "Education": "school", "Family": "family_restroom", "Legislative": "gavel", "Outdoor": "hiking", 
+            "Relax": "self_improvement", "Religious": "church", "Series": "video_library", "Science": "science", 
+            "Shop": "shopping_cart", "Travel": "flight", "Weather": "thunderstorm", "Undefined": "help"
+        };
+        const defaultIcon = "apps";
+
+        // 1. Define the specific starting order (without "All")
+        const orderedPrefix = ["General", "News", "Entertainment", "Sports"];
+        
+        // 2. Get all unique categories from the data
+        const allDataCategories = [...new Set(allStreams.map(s => s.category))];
+
+        // 3. Get the categories that are not in the predefined prefix
+        const otherCategories = allDataCategories.filter(cat => !orderedPrefix.includes(cat));
+
+        // 4. Separate "Undefined" from the other categories and sort the rest alphabetically
+        const hasUndefined = otherCategories.includes("Undefined");
+        const sortedOtherCategories = otherCategories.filter(cat => cat !== "Undefined").sort();
+
+        // 5. Assemble the final, ordered list, starting with "All"
+        let finalCategoryOrder = ["All", ...orderedPrefix];
+        finalCategoryOrder.push(...sortedOtherCategories);
+        if (hasUndefined) {
+            finalCategoryOrder.push("Undefined");
         }
+
+        allSelectors.categoryPillsContainer.innerHTML = "";
+
+        // 6. Iterate over the final ordered list to create the pills
+        finalCategoryOrder.forEach(categoryName => {
+            // Ensure we only render pills for categories that actually exist in the data (plus "All")
+            if (categoryName === "All" || allDataCategories.includes(categoryName)) {
+                const button = document.createElement("button");
+                button.className = "pill";
+                button.dataset.category = categoryName;
+
+                if (categoryName === "All") {
+                    button.classList.add("active");
+                }
+                
+                const iconName = (categoryName === "All") ? "apps" : (iconMap[categoryName] || defaultIcon);
+                button.innerHTML = `<span class="material-symbols-outlined">${iconName}</span>`;
+                
+                button.addEventListener("click", () => {
+                    allSelectors.categoryPillsContainer.querySelector(".pill.active")?.classList.remove("active");
+                    button.classList.add("active");
+                    currentFilters.category = categoryName;
+                    allSelectors.channelListHeader.textContent = `${categoryName} Channels`;
+                    applyFiltersAndRender();
+                });
+                allSelectors.categoryPillsContainer.appendChild(button);
+            }
+        });
     };
 
-    // Renders the main menu in the floating popup
     const renderMenu = () => {
         allSelectors.floatingMenu.innerHTML=`
             <ul>
@@ -121,24 +149,17 @@ document.addEventListener('DOMContentLoaded', () => {
     
         allSelectors.floatingMenu.querySelectorAll("li").forEach(e => e.addEventListener("click", t => {
             const n = e.querySelector("a");
-            if (n) {
-                t.preventDefault();
-                window.location.href = n.href;
-            }
+            if (n) { t.preventDefault(); window.location.href = n.href; }
         }));
     };
 
     /**
      * --- CHANNEL FILTERING & DISPLAY LOGIC ---
      */
-
-    // Applies the current filters (category only) and starts the rendering process
     const applyFiltersAndRender = () => {
         let filtered = [...allStreams];
         
-        // Country filter logic has been completely removed
-        
-        if (currentFilters.category !== 'ALL') {
+        if (currentFilters.category !== 'All') {
             filtered = filtered.filter(stream => stream.category === currentFilters.category);
         }
         currentFilteredStreams = filtered;
@@ -153,7 +174,6 @@ document.addEventListener('DOMContentLoaded', () => {
         loadMoreChannels();
     };
     
-    // Loads and displays channels in batches of 50
     const loadMoreChannels = () => {
         allSelectors.spinner.style.display = 'flex';
         allSelectors.loadMoreContainer.style.display = 'none';
@@ -200,7 +220,6 @@ document.addEventListener('DOMContentLoaded', () => {
     /**
      * --- UI INTERACTION SETUP ---
      */
-
     const setupHeaderScroll = () => { window.addEventListener("scroll", () => allSelectors.header.classList.toggle("scrolled", window.scrollY > 10)); };
     
     const setupMenuInteractions = () => {
@@ -240,7 +259,6 @@ document.addEventListener('DOMContentLoaded', () => {
     /**
      * --- VIDEO PLAYER LOGIC ---
      */
-
     const initPlayer = async () => {
         if (player) return;
         shaka.polyfill.installAll();
@@ -298,27 +316,25 @@ document.addEventListener('DOMContentLoaded', () => {
         history.pushState({}, "", window.location.pathname);
     };
 
+    /**
+     * --- MAIN APP INITIALIZATION ---
+     */
     async function main() {
         allStreams = await fetchAndParseM3U();
         if (allStreams.length === 0) return;
 
-        // Setup UI components
         setupHeaderScroll(); 
         renderMenu(); 
         setupMenuInteractions(); 
         setupSlider();
-        renderCategoryPills(); 
-        
-        // Initial render of channels
+        renderCategoryPills();
         applyFiltersAndRender();
         
-        // Setup all interactive element listeners
         allSelectors.loadMoreBtn.addEventListener('click', loadMoreChannels);
         allSelectors.minimizeBtn.addEventListener('click', minimizePlayer);
         allSelectors.minimizedPlayer.addEventListener('click', restorePlayer);
         allSelectors.exitBtn.addEventListener('click', closePlayer);
         
-        // Check for URL param to autoplay a channel
         const params = new URLSearchParams(window.location.search);
         const channelToPlay = params.get('play');
         if (channelToPlay) {
