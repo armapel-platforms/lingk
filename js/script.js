@@ -1,11 +1,12 @@
-// js/script.js
 document.addEventListener('DOMContentLoaded', () => {
 
-    // --- Element Selectors ---
     const allSelectors = {
         header: document.querySelector("header"),
         menuBtn: document.getElementById("menu-btn"),
         floatingMenu: document.getElementById("floating-menu"),
+        countryPicker: document.getElementById("country-picker"),
+        countryPickerSelection: document.getElementById("country-picker-selection"),
+        countryListPopup: document.getElementById("country-list-popup"),
         channelListingsContainer: document.getElementById("channel-listings"),
         spinner: document.getElementById("spinner"),
         videoElement: document.getElementById("video-player"),
@@ -19,19 +20,35 @@ document.addEventListener('DOMContentLoaded', () => {
         loadMoreContainer: document.getElementById("load-more-container"),
         loadMoreBtn: document.getElementById("load-more-btn")
     };
-    
-    // --- Global State ---
+
     let player = null, ui = null;
     const CHANNELS_PER_PAGE = 50;
     let currentlyDisplayedCount = 0;
     let currentFilteredStreams = [];
     let allStreams = [];
-    let currentFilters = { category: "All" }; // Default filter
+    let allCountries = [];
+    let allApiChannels = [];
+    let currentFilters = { category: "All", country: "Global" };
 
-    /**
-     * --- CORE LOGIC: Fetch and Parse the M3U file ---
-     */
-    async function fetchAndParseM3U() {
+    async function fetchApiData() {
+        const CHANNELS_API_URL = "https://iptv-org.github.io/api/channels.json";
+        const COUNTRIES_API_URL = "https://iptv-org.github.io/api/countries.json";
+        try {
+            console.log("Fetching API data...");
+            const [channelsResponse, countriesResponse] = await Promise.all([
+                fetch(CHANNELS_API_URL),
+                fetch(COUNTRIES_API_URL)
+            ]);
+            if (!channelsResponse.ok || !countriesResponse.ok) throw new Error('API fetch failed.');
+            allApiChannels = await channelsResponse.json();
+            allCountries = await countriesResponse.json();
+            console.log("API data fetched successfully.");
+        } catch (error) {
+            console.error("Failed to fetch API data:", error);
+        }
+    }
+
+    async function fetchAndProcessM3U() {
         const M3U_URL = "https://iptv-org.github.io/iptv/index.m3u";
         allSelectors.spinner.style.display = 'flex';
         console.log("Fetching M3U file...");
@@ -39,11 +56,13 @@ document.addEventListener('DOMContentLoaded', () => {
             const response = await fetch(M3U_URL);
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             const m3uText = await response.text();
-            console.log("M3U file fetched. Parsing...");
+            console.log("Parsing and merging M3U data...");
 
             const lines = m3uText.trim().split('\n');
             const parsedStreams = [];
-            
+            const apiChannelsMap = new Map(allApiChannels.map(c => [c.id, c]));
+            const countriesMap = new Map(allCountries.map(c => [c.code, c]));
+
             for (let i = 0; i < lines.length; i++) {
                 if (lines[i].startsWith('#EXTINF:')) {
                     const infoLine = lines[i];
@@ -52,12 +71,28 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (urlLine && urlLine.startsWith('http')) {
                         const name = infoLine.split(',').pop()?.trim() || 'Unknown';
                         const logoMatch = infoLine.match(/tvg-logo="([^"]*)"/);
-                        const countryMatch = infoLine.match(/tvg-country="([^"]*)"/);
-                        const langMatch = infoLine.match(/tvg-language="([^"]*)"/);
                         const categoryMatch = infoLine.match(/group-title="([^"]*)"/);
-                        const category = categoryMatch ? categoryMatch[1].split(';')[0] : 'General';
+                        const idMatch = infoLine.match(/tvg-id="([^"]*)"/);
+                        let channelId = idMatch ? idMatch[1] : null;
 
-                        parsedStreams.push({ name, logo: logoMatch ? logoMatch[1] : 'logo/favicon.svg', manifestUri: urlLine.trim(), type: 'hls', country: countryMatch ? countryMatch[1] : 'XX', language: langMatch ? langMatch[1] : 'N/A', category });
+                        if (channelId && channelId.includes('@')) {
+                            channelId = channelId.split('@')[0];
+                        }
+
+                        const category = categoryMatch ? categoryMatch[1].split(';')[0] : 'General';
+                        
+                        const apiChannel = channelId ? apiChannelsMap.get(channelId) : null;
+                        const countryCode = apiChannel ? apiChannel.country : 'XX';
+                        const countryInfo = countriesMap.get(countryCode);
+
+                        parsedStreams.push({
+                            name,
+                            logo: logoMatch ? logoMatch[1] : 'logo/favicon.svg',
+                            manifestUri: urlLine.trim(),
+                            category,
+                            country: countryCode,
+                            countryName: countryInfo ? countryInfo.name : 'Unknown'
+                        });
                     }
                 }
             }
@@ -65,72 +100,81 @@ document.addEventListener('DOMContentLoaded', () => {
             allSelectors.spinner.style.display = 'none';
             return parsedStreams;
         } catch (error) {
-            console.error("Failed to fetch or parse M3U file:", error);
+            console.error("Failed to process M3U file:", error);
             allSelectors.spinner.style.display = 'none';
-            allSelectors.channelListingsContainer.innerHTML = '<p style="color: var(--text-secondary); text-align: center; padding: 50px 0;">Could not load channels. Please check your internet connection and try again.</p>';
+            allSelectors.channelListingsContainer.innerHTML = '<p style="color: var(--text-secondary); text-align: center; padding: 50px 0;">Could not load channels.</p>';
             return [];
         }
     }
 
-    /**
-     * --- UI RENDERING FUNCTIONS ---
-     */
+    const getFlagUrl = (countryCode) => {
+        return `logo/flags/${countryCode.toLowerCase()}.svg`;
+    };
 
-    // --- MODIFIED: Renders category pills with specific ordering ---
+    const renderCountryList = () => {
+        const uniqueCountries = [...new Map(allStreams.filter(s => s.country && s.country !== 'XX').map(item => [item['country'], item])).values()];
+        uniqueCountries.sort((a, b) => a.countryName.localeCompare(b.countryName));
+
+        let countryListHTML = `<a href="#" data-country="Global" class="active"><span class="material-symbols-outlined">public</span><span>Global</span></a>`;
+        uniqueCountries.forEach(country => {
+            const flagUrl = getFlagUrl(country.country);
+            countryListHTML += `<a href="#" data-country="${country.country}">
+                                  <img src="${flagUrl}" alt="${country.countryName}" class="flag">
+                                  <span>${country.countryName}</span>
+                                </a>`;
+        });
+        allSelectors.countryListPopup.innerHTML = countryListHTML;
+
+        allSelectors.countryListPopup.querySelectorAll('a').forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const selectedCountryCode = link.dataset.country;
+
+                allSelectors.countryListPopup.querySelector('a.active')?.classList.remove('active');
+                link.classList.add('active');
+
+                const pickerSelection = allSelectors.countryPickerSelection;
+                const arrow = `<span id="country-picker-arrow" class="material-symbols-outlined">expand_more</span>`;
+                if (selectedCountryCode === 'Global') {
+                    pickerSelection.innerHTML = `<span class="material-symbols-outlined">public</span><span id="country-display">Global</span>` + arrow;
+                } else {
+                    const selectedCountry = uniqueCountries.find(c => c.country === selectedCountryCode);
+                    const flagUrl = getFlagUrl(selectedCountry.country);
+                    pickerSelection.innerHTML = `<img src="${flagUrl}" alt="${selectedCountry.countryName}" class="flag"><span id="country-display">${selectedCountry.countryName}</span>` + arrow;
+                }
+
+                currentFilters.country = selectedCountryCode;
+                applyFiltersAndRender();
+                allSelectors.countryListPopup.classList.remove('active');
+            });
+        });
+    };
+    
     const renderCategoryPills = () => {
-        const iconMap = {
-            "News": "newspaper", "Sports": "sports_basketball", "Kids": "smart_toy", "Music": "music_note", 
-            "Movies": "theaters", "Entertainment": "movie", "Lifestyle": "restaurant", "General": "tv_gen", 
-            "Auto": "directions_car", "Animation": "person_pin", "Business": "business_center", "Classic": "history", 
-            "Comedy": "comedy_mask", "Cooking": "cooking", "Culture": "palette", "Documentary": "menu_book", 
-            "Education": "school", "Family": "family_restroom", "Legislative": "gavel", "Outdoor": "hiking", 
-            "Relax": "self_improvement", "Religious": "church", "Series": "video_library", "Science": "science", 
-            "Shop": "shopping_cart", "Travel": "flight", "Weather": "thunderstorm", "Undefined": "help"
-        };
+        const iconMap = { "News": "newspaper", "Sports": "sports_basketball", "Kids": "smart_toy", "Music": "music_note", "Movies": "theaters", "Entertainment": "movie", "Lifestyle": "restaurant", "General": "tv_gen", "Auto": "directions_car", "Animation": "person_pin", "Business": "business_center", "Classic": "history", "Comedy": "comedy_mask", "Cooking": "cooking", "Culture": "palette", "Documentary": "menu_book", "Education": "school", "Family": "family_restroom", "Legislative": "gavel", "Outdoor": "hiking", "Relax": "self_improvement", "Religious": "church", "Series": "video_library", "Science": "science", "Shop": "shopping_cart", "Travel": "flight", "Weather": "thunderstorm", "Undefined": "help" };
         const defaultIcon = "apps";
-
-        // 1. Define the specific starting order (without "All")
         const orderedPrefix = ["General", "News", "Entertainment", "Sports"];
-        
-        // 2. Get all unique categories from the data
         const allDataCategories = [...new Set(allStreams.map(s => s.category))];
-
-        // 3. Get the categories that are not in the predefined prefix
         const otherCategories = allDataCategories.filter(cat => !orderedPrefix.includes(cat));
-
-        // 4. Separate "Undefined" from the other categories and sort the rest alphabetically
         const hasUndefined = otherCategories.includes("Undefined");
         const sortedOtherCategories = otherCategories.filter(cat => cat !== "Undefined").sort();
-
-        // 5. Assemble the final, ordered list, starting with "All"
-        let finalCategoryOrder = ["All", ...orderedPrefix];
-        finalCategoryOrder.push(...sortedOtherCategories);
-        if (hasUndefined) {
-            finalCategoryOrder.push("Undefined");
-        }
+        let finalCategoryOrder = ["All", ...orderedPrefix, ...sortedOtherCategories];
+        if (hasUndefined) finalCategoryOrder.push("Undefined");
 
         allSelectors.categoryPillsContainer.innerHTML = "";
-
-        // 6. Iterate over the final ordered list to create the pills
         finalCategoryOrder.forEach(categoryName => {
-            // Ensure we only render pills for categories that actually exist in the data (plus "All")
             if (categoryName === "All" || allDataCategories.includes(categoryName)) {
                 const button = document.createElement("button");
                 button.className = "pill";
                 button.dataset.category = categoryName;
-
-                if (categoryName === "All") {
-                    button.classList.add("active");
-                }
-                
+                if (categoryName === "All") button.classList.add("active");
                 const iconName = (categoryName === "All") ? "apps" : (iconMap[categoryName] || defaultIcon);
                 button.innerHTML = `<span class="material-symbols-outlined">${iconName}</span>`;
-                
                 button.addEventListener("click", () => {
                     allSelectors.categoryPillsContainer.querySelector(".pill.active")?.classList.remove("active");
                     button.classList.add("active");
                     currentFilters.category = categoryName;
-                    allSelectors.channelListHeader.textContent = `${categoryName} Channels`;
                     applyFiltersAndRender();
                 });
                 allSelectors.categoryPillsContainer.appendChild(button);
@@ -146,34 +190,39 @@ document.addEventListener('DOMContentLoaded', () => {
                 <li><a href="privacy.html"><span class="material-symbols-outlined">shield</span> Privacy Policy</a></li>
                 <li><a href="terms.html"><span class="material-symbols-outlined">gavel</span> Terms of Service</a></li>
             </ul>`;
-    
+
         allSelectors.floatingMenu.querySelectorAll("li").forEach(e => e.addEventListener("click", t => {
             const n = e.querySelector("a");
             if (n) { t.preventDefault(); window.location.href = n.href; }
         }));
     };
 
-    /**
-     * --- CHANNEL FILTERING & DISPLAY LOGIC ---
-     */
     const applyFiltersAndRender = () => {
         let filtered = [...allStreams];
-        
         if (currentFilters.category !== 'All') {
             filtered = filtered.filter(stream => stream.category === currentFilters.category);
         }
+        if (currentFilters.country !== 'Global') {
+            filtered = filtered.filter(stream => stream.country === currentFilters.country);
+        }
         currentFilteredStreams = filtered;
-        
+
         const listContainer = allSelectors.channelListingsContainer;
-        listContainer.innerHTML = ''; 
+        listContainer.innerHTML = '';
         const listElement = document.createElement('div');
         listElement.className = 'channel-list';
         listContainer.appendChild(listElement);
 
+        let headerText = `${currentFilters.category} Channels`;
+        if (currentFilters.country !== 'Global') {
+            const countryData = allCountries.find(c => c.code === currentFilters.country);
+            headerText += ` in ${countryData ? countryData.name : currentFilters.country}`;
+        }
+        allSelectors.channelListHeader.textContent = headerText;
         currentlyDisplayedCount = 0;
         loadMoreChannels();
     };
-    
+
     const loadMoreChannels = () => {
         allSelectors.spinner.style.display = 'flex';
         allSelectors.loadMoreContainer.style.display = 'none';
@@ -183,15 +232,12 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!listElement) return;
 
             const channelsToRender = currentFilteredStreams.slice(currentlyDisplayedCount, currentlyDisplayedCount + CHANNELS_PER_PAGE);
-            
+
             channelsToRender.forEach(stream => {
                 const item = document.createElement('div');
                 item.className = 'channel-list-item';
-                const lang = stream.language || 'N/A';
                 
-                const languageDisplay = (lang !== 'N/A' && lang) 
-                    ? `<span>${lang}</span>` 
-                    : `<span class="material-symbols-outlined">sensors</span>`;
+                const liveSensorIcon = `<span class="material-symbols-outlined">sensors</span>`;
 
                 item.innerHTML = `
                     <div class="channel-info-left">
@@ -199,33 +245,42 @@ document.addEventListener('DOMContentLoaded', () => {
                         <span class="channel-name">${stream.name}</span>
                     </div>
                     <div class="channel-info-right">
-                        <span class="fi fi-${stream.country.toLowerCase()}"></span>
-                        ${languageDisplay}
+                        ${liveSensorIcon}
                     </div>`;
                 item.addEventListener('click', () => openPlayer(stream));
                 listElement.appendChild(item);
             });
 
             currentlyDisplayedCount += channelsToRender.length;
-            
             allSelectors.loadMoreContainer.style.display = currentlyDisplayedCount < currentFilteredStreams.length ? 'block' : 'none';
             allSelectors.spinner.style.display = 'none';
 
             if (listElement.children.length === 0) {
-                allSelectors.channelListingsContainer.innerHTML = '<p style="color: var(--text-secondary); text-align: center; padding: 50px 0;">No channels match the current filters.</p>';
+                allSelectors.channelListingsContainer.innerHTML = '<p style="color: var(--text-secondary); text-align: center; padding: 50px 0;">No channels match filters.</p>';
             }
         }, 200);
     };
 
-    /**
-     * --- UI INTERACTION SETUP ---
-     */
     const setupHeaderScroll = () => { window.addEventListener("scroll", () => allSelectors.header.classList.toggle("scrolled", window.scrollY > 10)); };
-    
+
     const setupMenuInteractions = () => {
         allSelectors.menuBtn.addEventListener("click", e => { e.stopPropagation(); allSelectors.floatingMenu.classList.toggle("active"); });
         document.addEventListener("click", () => allSelectors.floatingMenu.classList.remove("active"));
         allSelectors.floatingMenu.addEventListener("click", e => e.stopPropagation());
+    };
+
+    const setupCountryPicker = () => {
+        allSelectors.countryPicker.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const isActive = allSelectors.countryListPopup.classList.toggle('active');
+            const arrow = allSelectors.countryPicker.querySelector('#country-picker-arrow');
+            if (arrow) arrow.classList.toggle('up', isActive);
+        });
+        document.addEventListener("click", () => {
+            allSelectors.countryListPopup.classList.remove('active');
+            const arrow = allSelectors.countryPicker.querySelector('#country-picker-arrow');
+            if (arrow) arrow.classList.remove('up');
+        });
     };
 
     const setupSlider = () => {
@@ -236,16 +291,8 @@ document.addEventListener('DOMContentLoaded', () => {
         let currentSlide = 0;
         let slideInterval = setInterval(nextSlide, 5000);
 
-        function goToSlide(n) {
-            slides.forEach((slide, index) => slide.classList.toggle("active", index === n));
-            dots.forEach((dot, index) => dot.classList.toggle("active", index === n));
-        }
-
-        function nextSlide() {
-            currentSlide = (currentSlide + 1) % slides.length;
-            goToSlide(currentSlide);
-        }
-
+        function goToSlide(n) { slides.forEach((s, i) => s.classList.toggle("active", i === n)); dots.forEach((d, i) => d.classList.toggle("active", i === n)); }
+        function nextSlide() { currentSlide = (currentSlide + 1) % slides.length; goToSlide(currentSlide); }
         dots.forEach((dot, index) => {
             dot.addEventListener("click", () => {
                 currentSlide = index;
@@ -255,23 +302,18 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
     };
-    
-    /**
-     * --- VIDEO PLAYER LOGIC ---
-     */
+
     const initPlayer = async () => {
         if (player) return;
         shaka.polyfill.installAll();
         if (shaka.Player.isBrowserSupported()) {
             player = new shaka.Player(allSelectors.videoElement);
             ui = new shaka.ui.Overlay(player, allSelectors.playerWrapper, allSelectors.videoElement);
-            ui.getControls();
             player.addEventListener("error", e => console.error("Player Error", e.detail));
         } else {
             console.error("Shaka Player not supported");
         }
     };
-
     const openPlayer = async (stream) => {
         await initPlayer();
         try {
@@ -285,19 +327,16 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById("minimized-player-logo").src = stream.logo;
         document.getElementById("minimized-player-name").textContent = stream.name;
         document.getElementById("minimized-player-category").textContent = stream.category;
-        
         allSelectors.minimizedPlayer.classList.remove("active");
         allSelectors.playerView.classList.add("active");
         history.pushState({ channel: stream.name }, "", `?play=${encodeURIComponent(stream.name.replace(/\s+/g, "-"))}`);
     };
-    
     const minimizePlayer = () => {
         if (allSelectors.playerView.classList.contains("active")) {
             allSelectors.playerView.classList.remove("active");
             allSelectors.minimizedPlayer.classList.add("active");
         }
     };
-
     const restorePlayer = (e) => {
         if (!e.target.closest("#exit-player-btn") && allSelectors.minimizedPlayer.classList.contains("active")) {
             allSelectors.minimizedPlayer.classList.remove("active");
@@ -305,36 +344,30 @@ document.addEventListener('DOMContentLoaded', () => {
             allSelectors.videoElement.play();
         }
     };
-
     const closePlayer = async (e) => {
         e.stopPropagation();
         allSelectors.playerView.classList.remove("active");
         allSelectors.minimizedPlayer.classList.remove("active");
-        if (player) {
-            await player.unload();
-        }
+        if (player) await player.unload();
         history.pushState({}, "", window.location.pathname);
     };
 
-    /**
-     * --- MAIN APP INITIALIZATION ---
-     */
     async function main() {
-        allStreams = await fetchAndParseM3U();
+        await fetchApiData();
+        allStreams = await fetchAndProcessM3U();
         if (allStreams.length === 0) return;
-
-        setupHeaderScroll(); 
-        renderMenu(); 
-        setupMenuInteractions(); 
+        setupHeaderScroll();
+        renderMenu();
+        setupMenuInteractions();
+        setupCountryPicker();
         setupSlider();
         renderCategoryPills();
+        renderCountryList();
         applyFiltersAndRender();
-        
         allSelectors.loadMoreBtn.addEventListener('click', loadMoreChannels);
         allSelectors.minimizeBtn.addEventListener('click', minimizePlayer);
         allSelectors.minimizedPlayer.addEventListener('click', restorePlayer);
         allSelectors.exitBtn.addEventListener('click', closePlayer);
-        
         const params = new URLSearchParams(window.location.search);
         const channelToPlay = params.get('play');
         if (channelToPlay) {
