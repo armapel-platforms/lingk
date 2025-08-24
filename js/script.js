@@ -183,13 +183,13 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const renderMenu = () => {
-        allSelectors.floatingMenu.innerHTML=`
-            <ul>
-                <li><a href="about.html"><span class="material-symbols-outlined">info</span> About Us</a></li>
-                <li><a href="faq.html"><span class="material-symbols-outlined">quiz</span> FAQ</a></li>
-                <li><a href="privacy.html"><span class="material-symbols-outlined">shield</span> Privacy Policy</a></li>
-                <li><a href="terms.html"><span class="material-symbols-outlined">gavel</span> Terms of Service</a></li>
-            </ul>`;
+        allSelectors.floatingMenu.innerHTML = `
+        <ul>
+            <li><a href="/home/about-us"><span class="material-symbols-outlined">info</span> About Us</a></li>
+            <li><a href="/home/faq"><span class="material-symbols-outlined">quiz</span> FAQ</a></li>
+            <li><a href="/home/privacy-policy"><span class="material-symbols-outlined">shield</span> Privacy Policy</a></li>
+            <li><a href="/home/terms-of-service"><span class="material-symbols-outlined">gavel</span> Terms of Service</a></li>
+        </ul>`;
 
         allSelectors.floatingMenu.querySelectorAll("li").forEach(e => e.addEventListener("click", t => {
             const n = e.querySelector("a");
