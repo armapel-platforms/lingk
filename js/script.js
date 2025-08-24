@@ -152,9 +152,9 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     
     const renderCategoryPills = () => {
-        const iconMap = { "News": "newspaper", "Sports": "sports_basketball", "Kids": "smart_toy", "Music": "music_note", "Movies": "theaters", "Entertainment": "movie", "Lifestyle": "restaurant", "General": "tv_gen", "Auto": "directions_car", "Animation": "person_pin", "Business": "business_center", "Classic": "history", "Comedy": "comedy_mask", "Cooking": "cooking", "Culture": "palette", "Documentary": "menu_book", "Education": "school", "Family": "family_restroom", "Legislative": "gavel", "Outdoor": "hiking", "Relax": "self_improvement", "Religious": "church", "Series": "video_library", "Science": "science", "Shop": "shopping_cart", "Travel": "flight", "Weather": "thunderstorm", "Undefined": "help" };
+        const iconMap = { "News": "news", "Sports": "sports_basketball", "Kids": "smart_toy", "Music": "music_note", "Movies": "theaters", "Entertainment": "theater_comedy", "Lifestyle": "restaurant", "General": "tv_gen", "Auto": "directions_car", "Animation": "person_pin", "Business": "business_center", "Classic": "history", "Comedy": "comedy_mask", "Cooking": "cooking", "Culture": "palette", "Documentary": "menu_book", "Education": "emoji_objects", "Family": "family_home", "Legislative": "gavel", "Outdoor": "hiking", "Public": "globe", "Relax": "self_improvement", "Religious": "church", "Series": "video_library", "Science": "science", "Shop": "shopping_cart", "Travel": "flight", "Weather": "thunderstorm", "Undefined": "help" };
         const defaultIcon = "apps";
-        const orderedPrefix = ["General", "News", "Entertainment", "Sports"];
+        const orderedPrefix = ["General", "News", "Entertainment", "Movies", "Sports", "Kids", "Education"];
         const allDataCategories = [...new Set(allStreams.map(s => s.category))];
         const otherCategories = allDataCategories.filter(cat => !orderedPrefix.includes(cat));
         const hasUndefined = otherCategories.includes("Undefined");
