@@ -87,7 +87,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                         parsedStreams.push({
                             name,
-                            logo: logoMatch ? logoMatch[1] : 'logo/favicon.svg',
+                            logo: logoMatch ? logoMatch[1] : '/logo/favicon.svg',
                             manifestUri: urlLine.trim(),
                             category,
                             country: countryCode,
@@ -108,7 +108,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     const getFlagUrl = (countryCode) => {
-        return `logo/flags/${countryCode.toLowerCase()}.svg`;
+        return `/logo/flags/${countryCode.toLowerCase()}.svg`;
     };
 
     const renderCountryList = () => {
