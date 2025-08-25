@@ -241,7 +241,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 item.innerHTML = `
                     <div class="channel-info-left">
-                        <img src="${stream.logo}" alt="${stream.name} Logo" class="channel-logo" onerror="this.src='logo/favicon.svg';">
+                        <img src="${stream.logo}" alt="${stream.name} Logo" class="channel-logo" onerror="this.src='/logo/favicon.svg';">
                         <span class="channel-name">${stream.name}</span>
                     </div>
                     <div class="channel-info-right">
