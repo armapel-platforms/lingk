@@ -103,7 +103,6 @@
                     const item = document.createElement('div');
                     item.className = 'channel-list-item';
                     
-                    // --- MODIFIED: Simplified layout for search results ---
                     item.innerHTML = `
                         <div class="channel-info-left">
                             <img src="${stream.logo}" alt="${stream.name} Logo" class="channel-logo" onerror="this.src='/logo/favicon.svg';">
@@ -114,7 +113,7 @@
                         </div>`;
 
                     item.addEventListener('click', () => {
-                        window.location.href = `index.html?play=${encodeURIComponent(stream.name.replace(/\s+/g, '-'))}`;
+                        window.location.href = `/home?play=${encodeURIComponent(stream.name.replace(/\s+/g, '-'))}`;
                     });
                     list.appendChild(item);
                 });
