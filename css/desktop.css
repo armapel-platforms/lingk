@@ -1,13 +1,20 @@
 @media (min-width: 1024px) {
-    main {
+    body {
+        padding-top: 80px;
+    }
+
+    main .main-container {
         display: grid;
-        grid-template-columns: 2fr 1fr;
-        gap: 20px;
-        padding: 20px;
+        grid-template-columns: 2fr 1.2fr;
+        gap: 30px;
+        padding: 0 20px;
+        align-items: start;
     }
 
     #player-view {
-        position: static;
+        grid-column: 1 / 2;
+        position: sticky;
+        top: 80px;
         transform: none;
         background: transparent;
         backdrop-filter: none;
@@ -32,21 +39,36 @@
     }
 
     .content-container {
+        grid-column: 2 / 3;
         width: 100%;
-        height: calc(100vh - 100px);
+        height: calc(100vh - 80px);
         overflow-y: auto;
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+    }
+    .content-container::-webkit-scrollbar {
+        display: none;
     }
 
     #minimized-player {
         display: none !important;
     }
 
-    .featured-slider, .category-nav, .section-header, .channel-listings, .load-more-container, .site-footer {
-        grid-column: 2 / 3;
+    .featured-slider {
+        margin: 0;
     }
-
-    #player-view {
-        grid-column: 1 / 2;
-        grid-row: 1 / span 6;
+    .category-nav {
+        padding: 20px 0;
+    }
+    .section-header {
+        padding: 0;
+    }
+    .channel-listings {
+        padding: 0;
+        margin-top: 20px;
+    }
+    .site-footer {
+        margin-top: 20px;
+        padding: 30px 0;
     }
 }
