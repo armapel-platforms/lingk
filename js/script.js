@@ -29,6 +29,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let allCountries = [];
     let allApiChannels = [];
     let currentFilters = { category: "All", country: "Global" };
+    const isDesktop = () => window.innerWidth >= 1024;
 
     async function fetchApiData() {
         const CHANNELS_API_URL = "https://iptv-org.github.io/api/channels.json";
@@ -324,21 +325,26 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         document.getElementById("player-channel-name").textContent = stream.name;
         document.getElementById("player-channel-category").textContent = stream.category;
-        document.getElementById("minimized-player-logo").src = stream.logo;
-        document.getElementById("minimized-player-name").textContent = stream.name;
-        document.getElementById("minimized-player-category").textContent = stream.category;
-        allSelectors.minimizedPlayer.classList.remove("active");
-        allSelectors.playerView.classList.add("active");
+        
+        if (!isDesktop()) {
+            document.getElementById("minimized-player-logo").src = stream.logo;
+            document.getElementById("minimized-player-name").textContent = stream.name;
+            document.getElementById("minimized-player-category").textContent = stream.category;
+            allSelectors.minimizedPlayer.classList.remove("active");
+            allSelectors.playerView.classList.add("active");
+        }
         history.pushState({ channel: stream.name }, "", `?play=${encodeURIComponent(stream.name.replace(/\s+/g, "-"))}`);
     };
     const minimizePlayer = () => {
+        if (isDesktop()) return;
         if (allSelectors.playerView.classList.contains("active")) {
             allSelectors.playerView.classList.remove("active");
             allSelectors.minimizedPlayer.classList.add("active");
         }
     };
     const restorePlayer = (e) => {
-        if (!e.target.closest("#exit-player-btn") && allSelectors.minimizedPlayer.classList.contains("active")) {
+        if (isDesktop() || e.target.closest("#exit-player-btn")) return;
+        if (allSelectors.minimizedPlayer.classList.contains("active")) {
             allSelectors.minimizedPlayer.classList.remove("active");
             allSelectors.playerView.classList.add("active");
             allSelectors.videoElement.play();
@@ -346,8 +352,10 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     const closePlayer = async (e) => {
         e.stopPropagation();
-        allSelectors.playerView.classList.remove("active");
-        allSelectors.minimizedPlayer.classList.remove("active");
+        if (!isDesktop()) {
+            allSelectors.playerView.classList.remove("active");
+            allSelectors.minimizedPlayer.classList.remove("active");
+        }
         if (player) await player.unload();
         history.pushState({}, "", window.location.pathname);
     };
@@ -368,11 +376,14 @@ document.addEventListener('DOMContentLoaded', () => {
         allSelectors.minimizeBtn.addEventListener('click', minimizePlayer);
         allSelectors.minimizedPlayer.addEventListener('click', restorePlayer);
         allSelectors.exitBtn.addEventListener('click', closePlayer);
+        
         const params = new URLSearchParams(window.location.search);
         const channelToPlay = params.get('play');
         if (channelToPlay) {
             const streamToPlay = allStreams.find(s => s.name.replace(/\s+/g, '-') === channelToPlay);
-            if (streamToPlay) openPlayer(streamToPlay);
+            if (streamToPlay && isDesktop()) {
+                openPlayer(streamToPlay);
+            }
         }
     }
 
