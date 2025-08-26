@@ -47,64 +47,75 @@
     <div id="floating-menu" class="floating-menu"></div>
 
     <main>
-        <section id="featured-slider" class="featured-slider">
-            <div class="slider">
-                 <div class="slide active">
-                    <img src="/logo/lingk-banner1.png" alt="Featured Background" class="slide-bg">
-                    <div class="slide-overlay"></div>
-                    <div class="slide-content">
-                        <h2 class="slide-title"><strong>Welcome to</strong> lingk</h2>
-                        <p class="slide-description">Your free portal to global television.</p>
-                        <div class="slide-badge visit-badge">EXPLORE NOW</div>
-                    </div>
+        <div class="main-container">
+            <div id="player-view" class="player-view">
+                <div class="player-header">
+                    <button id="minimize-player-btn" class="icon-link"><span class="material-symbols-outlined">expand_more</span></button>
                 </div>
-                 <div class="slide">
-                    <img src="/logo/lingk-banner2.png" alt="Featured Background" class="slide-bg">
-                    <div class="slide-overlay"></div>
-                    <div class="slide-content">
-                        <h2 class="slide-title">Stay Informed</h2>
-                         <p class="slide-description">Live news channels from across the globe.</p>
+                <div class="video-player-container" id="video-player-wrapper"><video id="video-player" poster="logo/advisory.png"></video></div>
+                <div class="player-info">
+                    <div class="player-info-left">
+                        <h3 id="player-channel-name">Channel Name</h3>
+                        <p id="player-channel-category">Category</p>
                     </div>
+                    <div class="live-indicator"><span class="material-symbols-outlined">sensors</span>LIVE</div>
                 </div>
             </div>
-            <div class="slider-nav">
-                <button class="dot active"></button>
-                <button class="dot"></button>
+
+            <div class="content-container">
+                <section id="featured-slider" class="featured-slider">
+                    <div class="slider">
+                         <div class="slide active">
+                            <img src="/logo/lingk-banner1.png" alt="Featured Background" class="slide-bg">
+                            <div class="slide-overlay"></div>
+                            <div class="slide-content">
+                                <h2 class="slide-title"><strong>Welcome to</strong> lingk</h2>
+                                <p class="slide-description">Your free portal to global television.</p>
+                                <div class="slide-badge visit-badge">EXPLORE NOW</div>
+                            </div>
+                        </div>
+                         <div class="slide">
+                            <img src="/logo/lingk-banner2.png" alt="Featured Background" class="slide-bg">
+                            <div class="slide-overlay"></div>
+                            <div class="slide-content">
+                                <h2 class="slide-title">Stay Informed</h2>
+                                 <p class="slide-description">Live news channels from across the globe.</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="slider-nav">
+                        <button class="dot active"></button>
+                        <button class="dot"></button>
+                    </div>
+                </section>
+        
+                <section id="category-nav" class="category-nav">
+                    <div class="category-pills">
+                    </div>
+                </section>
+        
+                <h2 id="channel-list-header" class="section-header">All Channels</h2>
+        
+                <section id="channel-listings" class="channel-listings">
+                    <div class="spinner-container" id="spinner">
+                        <div class="spinner"></div>
+                    </div>
+                </section>
+        
+                <div id="load-more-container" class="load-more-container">
+                    <button id="load-more-btn" class="load-more-btn">Load More</button>
+                </div>
+
+                <footer class="site-footer">
+                    <div class="footer-content">
+                        <p class="developer-credit">from <img src="/logo/armapel-logo-white.png" alt="armapel logo" class="developer-logo"></p>
+                        <p class="copyright">©2025 <span class="footer-brand">lingk</span>, All Rights Reserved.</p>
+                        <p class="version">Version 1.0.5</p>
+                    </div>
+                </footer>
             </div>
-        </section>
-
-        <section id="category-nav" class="category-nav">
-            <div class="category-pills">
-            </div>
-        </section>
-
-        <h2 id="channel-list-header" class="section-header">All Channels</h2>
-
-        <section id="channel-listings" class="channel-listings">
-            <div class="spinner-container" id="spinner">
-                <div class="spinner"></div>
-            </div>
-        </section>
-
-        <div id="load-more-container" class="load-more-container">
-            <button id="load-more-btn" class="load-more-btn">Load More</button>
         </div>
-
     </main>
-
-    <div id="player-view" class="player-view">
-        <div class="player-header">
-            <button id="minimize-player-btn" class="icon-link"><span class="material-symbols-outlined">expand_more</span></button>
-        </div>
-        <div class="video-player-container" id="video-player-wrapper"><video id="video-player" poster="logo/advisory.png"></video></div>
-        <div class="player-info">
-            <div class="player-info-left">
-                <h3 id="player-channel-name">Channel Name</h3>
-                <p id="player-channel-category">Category</p>
-            </div>
-            <div class="live-indicator"><span class="material-symbols-outlined">sensors</span>LIVE</div>
-        </div>
-    </div>
     
     <div id="minimized-player" class="minimized-player">
         <div class="minimized-player-left">
@@ -119,14 +130,6 @@
             <button id="exit-player-btn" class="icon-link-mini"><span class="material-symbols-outlined">close</span></button>
         </div>
     </div>
-    
-    <footer class="site-footer">
-        <div class="footer-content">
-            <p class="developer-credit">from <img src="/logo/armapel-logo-white.png" alt="armapel logo" class="developer-logo"></p>
-            <p class="copyright">©2025 <span class="footer-brand">lingk</span>, All Rights Reserved.</p>
-            <p class="version">Version 1.0.5</p>
-        </div>
-    </footer>
 
     <script src="/js/script.js"></script>
 </body>
