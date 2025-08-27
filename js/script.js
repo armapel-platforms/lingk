@@ -31,6 +31,15 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentFilters = { category: "All", country: "Global" };
     const isDesktop = () => window.innerWidth >= 1024;
 
+    const setVideoPoster = () => {
+        if (!allSelectors.videoElement) return;
+        if (isDesktop()) {
+            allSelectors.videoElement.poster = '/logo/desktop-poster.png';
+        } else {
+            allSelectors.videoElement.poster = '/logo/attention.png';
+        }
+    };
+
     async function fetchApiData() {
         const CHANNELS_API_URL = "https://iptv-org.github.io/api/channels.json";
         const COUNTRIES_API_URL = "https://iptv-org.github.io/api/countries.json";
@@ -364,6 +373,10 @@ document.addEventListener('DOMContentLoaded', () => {
         await fetchApiData();
         allStreams = await fetchAndProcessM3U();
         if (allStreams.length === 0) return;
+
+        setVideoPoster();
+        window.addEventListener('resize', setVideoPoster);
+        
         setupHeaderScroll();
         renderMenu();
         setupMenuInteractions();
