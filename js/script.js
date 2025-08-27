@@ -394,7 +394,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const channelToPlay = params.get('play');
         if (channelToPlay) {
             const streamToPlay = allStreams.find(s => s.name.replace(/\s+/g, '-') === channelToPlay);
-            if (streamToPlay && isDesktop()) {
+            if (streamToPlay) { // FIX: Removed isDesktop() check to allow playing on mobile from URL
                 openPlayer(streamToPlay);
             }
         }
