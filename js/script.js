@@ -78,7 +78,7 @@ window.addEventListener('load', () => {
                     const infoLine = lines[i];
                     const urlLine = lines[i + 1];
                     
-                    if (urlLine && urlLine.startsWith('https','http')) {
+                    if (urlLine && urlLine.startsWith('http')) {
                         const name = infoLine.split(',').pop()?.trim() || 'Unknown';
                         const logoMatch = infoLine.match(/tvg-logo="([^"]*)"/);
                         const categoryMatch = infoLine.match(/group-title="([^"]*)"/);
