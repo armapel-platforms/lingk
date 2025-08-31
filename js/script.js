@@ -386,14 +386,16 @@ window.addEventListener('load', () => {
         history.pushState({ channel: stream.name }, "", `?play=${encodeURIComponent(stream.name.replace(/\s+/g, "-"))}`);
     };
 
-    const minimizePlayer = () => {
+   const minimizePlayer = () => {
         if (isDesktop()) return;
         if (allSelectors.playerView.classList.contains("active")) {
             allSelectors.playerView.classList.remove("active");
-            allSelectors.minimizedPlayer.classList.add("active");
+
+            setTimeout(() => {
+                allSelectors.minimizedPlayer.classList.add("active");
+            }, 250);
         }
     };
-
     const restorePlayer = (e) => {
         if (isDesktop() || e.target.closest("#exit-player-btn")) return;
         if (allSelectors.minimizedPlayer.classList.contains("active")) {
