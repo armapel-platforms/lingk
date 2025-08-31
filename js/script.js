@@ -443,7 +443,7 @@ window.addEventListener('load', () => {
         if (channelToPlay) {
             const streamToPlay = allStreams.find(s => s.name.replace(/\s+/g, '-') === channelToPlay);
             if (streamToPlay) {
-                openPlayer(streamToPlay);
+                openPlayer(streamToPlay, true);
             }
         }
     }
