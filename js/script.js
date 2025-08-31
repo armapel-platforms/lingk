@@ -1,4 +1,4 @@
-document.addEventListener('DOMContentLoaded', () => {
+window.addEventListener('load', () => {
 
     const allSelectors = {
         header: document.querySelector("header"),
@@ -21,7 +21,7 @@ document.addEventListener('DOMContentLoaded', () => {
         loadMoreBtn: document.getElementById("load-more-btn")
     };
 
-    let player = null, ui = null;
+    let player = null;
     const CHANNELS_PER_PAGE = 50;
     let currentlyDisplayedCount = 0;
     let currentFilteredStreams = [];
@@ -257,7 +257,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     <div class="channel-info-right">
                         ${liveSensorIcon}
                     </div>`;
-                item.addEventListener('click', () => openPlayer(stream));
+
+                item.addEventListener('click', () => openPlayer(stream, true));
+                
                 listElement.appendChild(item);
             });
 
@@ -266,7 +268,7 @@ document.addEventListener('DOMContentLoaded', () => {
             allSelectors.spinner.style.display = 'none';
 
             if (listElement.children.length === 0) {
-                allSelectors.channelListingsContainer.innerHTML = '<p style="color: var(--text-secondary); text-align: center; padding: 50px 0;">No channels match filters.</p>';
+                allSelectors.channelListingsContainer.innerHTML = '<p style="color: var(--text-secondary); text-align: center; padding: 50px 0; font-size: 0.85rem;">No channels match filters.</p>';
             }
         }, 200);
     };
@@ -313,37 +315,77 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     };
 
-    const initPlayer = async () => {
+    const initPlayer = () => {
         if (player) return;
-        shaka.polyfill.installAll();
-        if (shaka.Player.isBrowserSupported()) {
-            player = new shaka.Player(allSelectors.videoElement);
-            ui = new shaka.ui.Overlay(player, allSelectors.playerWrapper, allSelectors.videoElement);
-            player.addEventListener("error", e => console.error("Player Error", e.detail));
-        } else {
-            console.error("Shaka Player not supported");
-        }
+
+        const playerOptions = {
+            controls: true,
+            autoplay: true,
+            muted: true,
+            preload: 'auto',
+            techOrder: ['shaka', 'html5']
+        };
+
+        player = videojs(allSelectors.videoElement, playerOptions, () => {
+            console.log('Video.js player is ready.');
+        });
+        
+        player.on('fullscreenchange', async () => {
+            if (player.isFullscreen()) {
+                allSelectors.playerView.classList.add('in-fullscreen-mode');
+                if (screen.orientation && typeof screen.orientation.lock === 'function') {
+                    try {
+                        await screen.orientation.lock('landscape');
+                    } catch (err) {
+                        console.error('Screen orientation lock failed:', err);
+                    }
+                }
+            } else {
+                allSelectors.playerView.classList.remove('in-fullscreen-mode');
+                if (screen.orientation && typeof screen.orientation.unlock === 'function') {
+                    screen.orientation.unlock();
+                }
+            }
+        });
     };
-    const openPlayer = async (stream) => {
-        await initPlayer();
-        try {
-            await player.load(stream.manifestUri);
-            allSelectors.videoElement.play();
-        } catch (error) {
-            console.error("Error loading stream:", error);
+    
+    const openPlayer = (stream, shouldBeUnmuted = false) => {
+        initPlayer(); 
+        
+        let streamType;
+        if (stream.manifestUri.endsWith('.m3u8')) {
+            streamType = 'application/x-mpegURL';
+        } else if (stream.manifestUri.endsWith('.mpd')) {
+            streamType = 'application/dash+xml';
+        } else {
+            streamType = 'video/mp4'; 
         }
+
+        player.src({
+            src: stream.manifestUri,
+            type: streamType
+        });
+        
+        if (shouldBeUnmuted) {
+            player.muted(false);
+        } else {
+            player.muted(true);
+        }
+
         document.getElementById("player-channel-name").textContent = stream.name;
         document.getElementById("player-channel-category").textContent = stream.category;
         
+        allSelectors.playerView.classList.add("active");
+
         if (!isDesktop()) {
             document.getElementById("minimized-player-logo").src = stream.logo;
             document.getElementById("minimized-player-name").textContent = stream.name;
             document.getElementById("minimized-player-category").textContent = stream.category;
             allSelectors.minimizedPlayer.classList.remove("active");
-            allSelectors.playerView.classList.add("active");
         }
         history.pushState({ channel: stream.name }, "", `?play=${encodeURIComponent(stream.name.replace(/\s+/g, "-"))}`);
     };
+
     const minimizePlayer = () => {
         if (isDesktop()) return;
         if (allSelectors.playerView.classList.contains("active")) {
@@ -351,21 +393,27 @@ document.addEventListener('DOMContentLoaded', () => {
             allSelectors.minimizedPlayer.classList.add("active");
         }
     };
+
     const restorePlayer = (e) => {
         if (isDesktop() || e.target.closest("#exit-player-btn")) return;
         if (allSelectors.minimizedPlayer.classList.contains("active")) {
             allSelectors.minimizedPlayer.classList.remove("active");
             allSelectors.playerView.classList.add("active");
-            allSelectors.videoElement.play();
+            if (player) player.play();
         }
     };
-    const closePlayer = async (e) => {
+
+    const closePlayer = (e) => {
         e.stopPropagation();
+
+        allSelectors.playerView.classList.remove("active");
+        
         if (!isDesktop()) {
-            allSelectors.playerView.classList.remove("active");
             allSelectors.minimizedPlayer.classList.remove("active");
         }
-        if (player) await player.unload();
+        if (player) {
+            player.reset();
+        }
         history.pushState({}, "", window.location.pathname);
     };
 
@@ -394,7 +442,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const channelToPlay = params.get('play');
         if (channelToPlay) {
             const streamToPlay = allStreams.find(s => s.name.replace(/\s+/g, '-') === channelToPlay);
-            if (streamToPlay) { // FIX: Removed isDesktop() check to allow playing on mobile from URL
+            if (streamToPlay) {
                 openPlayer(streamToPlay);
             }
         }
