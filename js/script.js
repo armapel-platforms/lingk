@@ -77,8 +77,8 @@ window.addEventListener('load', () => {
                 if (lines[i].startsWith('#EXTINF:')) {
                     const infoLine = lines[i];
                     const urlLine = lines[i + 1];
-
-                    if (urlLine && urlLine.startsWith('http')) {
+                    
+                    if (urlLine && urlLine.startsWith('https')) {
                         const name = infoLine.split(',').pop()?.trim() || 'Unknown';
                         const logoMatch = infoLine.match(/tvg-logo="([^"]*)"/);
                         const categoryMatch = infoLine.match(/group-title="([^"]*)"/);
