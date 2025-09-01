@@ -378,9 +378,6 @@ header.subpage-header h1 {
     margin: 0; 
     font-size: 0.85rem; 
     font-weight: 700; 
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
 }
 
 .minimized-info p { 
