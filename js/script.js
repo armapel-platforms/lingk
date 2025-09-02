@@ -22,6 +22,7 @@ window.addEventListener('load', () => {
     };
 
     let player = null;
+    let activeStream = null; // Track the currently playing stream
     const CHANNELS_PER_PAGE = 50;
     let currentlyDisplayedCount = 0;
     let currentFilteredStreams = [];
@@ -37,6 +38,20 @@ window.addEventListener('load', () => {
             allSelectors.videoElement.poster = '/logo/desktop-poster.png';
         } else {
             allSelectors.videoElement.poster = '/logo/attention.png';
+        }
+    };
+    
+    const setupLayout = () => {
+        if (isDesktop()) {
+            if (allSelectors.playerView) allSelectors.playerView.classList.add('active');
+            if (allSelectors.minimizeBtn) allSelectors.minimizeBtn.style.display = 'none';
+            if (allSelectors.minimizedPlayer) allSelectors.minimizedPlayer.classList.remove('active');
+
+        } else {
+            if (allSelectors.minimizeBtn) allSelectors.minimizeBtn.style.display = 'flex';
+            if (!activeStream && allSelectors.playerView) {
+                allSelectors.playerView.classList.remove('active');
+            }
         }
     };
 
@@ -351,6 +366,7 @@ window.addEventListener('load', () => {
     
     const openPlayer = (stream, shouldBeUnmuted = false) => {
         initPlayer(); 
+        activeStream = stream;
         
         let streamType;
         if (stream.manifestUri.endsWith('.m3u8')) {
@@ -366,18 +382,14 @@ window.addEventListener('load', () => {
             type: streamType
         });
         
-        if (shouldBeUnmuted) {
-            player.muted(false);
-        } else {
-            player.muted(true);
-        }
+        player.muted(!shouldBeUnmuted);
+        player.play();
 
         document.getElementById("player-channel-name").textContent = stream.name;
         document.getElementById("player-channel-category").textContent = stream.category;
         
-        allSelectors.playerView.classList.add("active");
-
         if (!isDesktop()) {
+            allSelectors.playerView.classList.add("active");
             document.getElementById("minimized-player-logo").src = stream.logo;
             document.getElementById("minimized-player-name").textContent = stream.name;
             document.getElementById("minimized-player-category").textContent = stream.category;
@@ -408,15 +420,20 @@ window.addEventListener('load', () => {
     const closePlayer = (e) => {
         e.stopPropagation();
 
-        allSelectors.playerView.classList.remove("active");
-        
-        if (!isDesktop()) {
-            allSelectors.minimizedPlayer.classList.remove("active");
-        }
         if (player) {
             player.reset();
         }
+        activeStream = null;
+        setVideoPoster();
         history.pushState({}, "", window.location.pathname);
+
+        if (isDesktop()) {
+            document.getElementById('player-channel-name').textContent = 'Channel Name';
+            document.getElementById('player-channel-category').textContent = 'Category';
+        } else {
+            allSelectors.playerView.classList.remove("active");
+            allSelectors.minimizedPlayer.classList.remove("active");
+        }
     };
 
     async function main() {
@@ -425,7 +442,11 @@ window.addEventListener('load', () => {
         if (allStreams.length === 0) return;
 
         setVideoPoster();
-        window.addEventListener('resize', setVideoPoster);
+        setupLayout();
+        window.addEventListener('resize', () => {
+            setVideoPoster();
+            setupLayout();
+        });
         
         setupHeaderScroll();
         renderMenu();
