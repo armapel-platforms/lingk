@@ -395,36 +395,6 @@ header.subpage-header h1 {
     border-radius: 50%; 
 }
 
-.player-advisory {
-    position: absolute;
-    inset: 0;
-    background-color: rgba(0, 0, 0, 0.85);
-    border-radius: var(--border-radius);
-    display: none;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    text-align: center;
-    padding: 20px;
-    z-index: 10;
-}
-.player-advisory.active {
-    display: flex;
-}
-.player-advisory img {
-    max-width: 120px;
-    margin-bottom: 20px;
-}
-.player-advisory p {
-    color: var(--text-secondary);
-    line-height: 1.6;
-    font-size: 0.9rem;
-}
-.player-advisory a {
-    color: var(--theme-color);
-    text-decoration: underline;
-}
-
 .ripple { position: absolute; border-radius: 50%; background-color: rgba(255, 255, 255, 0.4); transform: scale(0); animation: ripple 0.6s linear; pointer-events: none; }
 @keyframes ripple { to { transform: scale(4); opacity: 0; } }
 
