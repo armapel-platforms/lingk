@@ -1,4 +1,7 @@
 {
+  "redirects": [
+    { "source": "/:path*.html", "destination": "/404", "permanent": false }
+  ],
   "rewrites": [
     { "source": "/", "destination": "/home" },
     { "source": "/home", "destination": "/index.html" },
