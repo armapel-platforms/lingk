@@ -22,7 +22,7 @@ window.addEventListener('load', () => {
     };
 
     let player = null;
-    let activeStream = null; // Track the currently playing stream
+    let activeStream = null;
     const CHANNELS_PER_PAGE = 50;
     let currentlyDisplayedCount = 0;
     let currentFilteredStreams = [];
@@ -31,6 +31,8 @@ window.addEventListener('load', () => {
     let allApiChannels = [];
     let currentFilters = { category: "All", country: "Global" };
     const isDesktop = () => window.innerWidth >= 1024;
+    
+    const originalTitle = "Lingk - Free Global IPTV Streaming";
 
     const setVideoPoster = () => {
         if (!allSelectors.videoElement) return;
@@ -387,6 +389,8 @@ window.addEventListener('load', () => {
 
         document.getElementById("player-channel-name").textContent = stream.name;
         document.getElementById("player-channel-category").textContent = stream.category;
+
+        document.title = `${stream.name} - Lingk`;
         
         if (!isDesktop()) {
             allSelectors.playerView.classList.add("active");
@@ -426,6 +430,8 @@ window.addEventListener('load', () => {
         activeStream = null;
         setVideoPoster();
         history.pushState({}, "", window.location.pathname);
+
+        document.title = originalTitle;
 
         if (isDesktop()) {
             document.getElementById('player-channel-name').textContent = 'Channel Name';
