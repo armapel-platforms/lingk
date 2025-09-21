@@ -483,7 +483,6 @@ header.subpage-header h1 {
     margin: 0;
 }
 .developer-header .developer-link .material-symbols-outlined {
-    font-size: 28px;
     color: var(--text-secondary);
     transition: color 0.2s;
 }
