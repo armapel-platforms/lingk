@@ -459,7 +459,7 @@ header.subpage-header h1 {
 .legal-container h2 {
     font-size: 1.0rem;
     padding-top: 0;
-    margin: 10px 0;
+    margin: 5px 0;
 }
 .legal-container p {
     color: var(--text-secondary);
