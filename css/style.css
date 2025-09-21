@@ -459,11 +459,11 @@ header.subpage-header h1 {
 .legal-container h2 {
     font-size: 1.0rem;
     padding-top: 0;
-    margin: 15px 0 10px 0;
+    margin: 10px 0;
 }
 .legal-container p {
     color: var(--text-secondary);
-    line-height: 1.6;
+    line-height: 1.7;
     font-size: 0.8rem;
     margin: 0;
 }
@@ -507,7 +507,7 @@ header.subpage-header h1 {
     text-align: left;
     color: var(--text-secondary);
     margin: 0 auto 30px auto;
-    font-size: 0.9rem;
+    font-size: 0.8rem;
     max-width: 800px;
     line-height: 1.6;
 }
@@ -528,7 +528,7 @@ header.subpage-header h1 {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    font-size: 1.0rem;
+    font-size: 0.95rem;
     padding: 20px 25px;
     cursor: pointer;
     font-weight: 600;
@@ -552,7 +552,7 @@ header.subpage-header h1 {
 .faq-answer p {
     padding: 0 25px 20px 25px;
     margin: 0;
-    font-size: 0.85rem;
+    font-size: 0.8rem;
     line-height: 1.7;
     color: var(--text-secondary);
 }
