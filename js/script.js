@@ -432,6 +432,23 @@ window.addEventListener('load', () => {
         }
     };
 
+    const resetPlayerUI = () => {
+        if (player) {
+            player.unload();
+        }
+        
+        activeStream = null;
+        setVideoPoster();
+        
+        history.pushState({}, "", window.location.pathname);
+        document.title = originalTitle;
+
+        if (isDesktop()) {
+            document.getElementById('player-channel-name').textContent = 'Channel Name';
+            document.getElementById('player-channel-category').textContent = 'Category';
+        }
+    };
+
     async function main() {
         await fetchApiData();
         allStreams = await fetchAndProcessM3U();
@@ -460,11 +477,7 @@ window.addEventListener('load', () => {
         allSelectors.minimizeBtn.addEventListener('click', minimizePlayer);
         allSelectors.minimizedPlayer.addEventListener('click', restorePlayer);
         allSelectors.exitBtn.addEventListener('click', closePlayer);
-        
-        allSelectors.videoElement.addEventListener('ended', (e) => {
-            console.log("Stream ended, closing player to prevent replay icon.");
-            closePlayer(e);
-        });
+        allSelectors.videoElement.addEventListener('ended', resetPlayerUI);
         
         const params = new URLSearchParams(window.location.search);
         const channelToPlay = params.get('play');
