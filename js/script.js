@@ -9,7 +9,7 @@ window.addEventListener('load', () => {
         countryListPopup: document.getElementById("country-list-popup"),
         channelListingsContainer: document.getElementById("channel-listings"),
         spinner: document.getElementById("spinner"),
-        videoElement: document.getElementById("video-player"),
+        videoElement: document.getElementById("video-js-player"),
         playerWrapper: document.getElementById("video-player-wrapper"),
         playerView: document.getElementById("player-view"),
         minimizedPlayer: document.getElementById("minimized-player"),
@@ -22,7 +22,6 @@ window.addEventListener('load', () => {
     };
 
     let player = null;
-    let ui = null;
     let activeStream = null;
     const CHANNELS_PER_PAGE = 50;
     let currentlyDisplayedCount = 0;
@@ -32,18 +31,19 @@ window.addEventListener('load', () => {
     let allApiChannels = [];
     let currentFilters = { category: "All", country: "Global" };
     const isDesktop = () => window.innerWidth >= 1024;
-    
+
     const originalTitle = "Lingk - Free Global IPTV Streaming";
 
     const setVideoPoster = () => {
         if (!allSelectors.videoElement) return;
-        if (isDesktop()) {
-            allSelectors.videoElement.poster = '/logo/desktop-poster.png';
+        const posterUrl = isDesktop() ? '/logo/desktop-poster.png' : '/logo/attention.png';
+        if (player) {
+            player.poster(posterUrl);
         } else {
-            allSelectors.videoElement.poster = '/logo/attention.png';
+            allSelectors.videoElement.poster = posterUrl;
         }
     };
-    
+
     const setupLayout = () => {
         if (isDesktop()) {
             if (allSelectors.playerView) allSelectors.playerView.classList.add('active');
@@ -95,7 +95,7 @@ window.addEventListener('load', () => {
                 if (lines[i].startsWith('#EXTINF:')) {
                     const infoLine = lines[i];
                     const urlLine = lines[i + 1];
-                    
+
                     if (urlLine && urlLine.startsWith('http')) {
                         const name = infoLine.split(',').pop()?.trim() || 'Unknown';
                         const logoMatch = infoLine.match(/tvg-logo="([^"]*)"/);
@@ -108,7 +108,7 @@ window.addEventListener('load', () => {
                         }
 
                         const category = categoryMatch ? categoryMatch[1].split(';')[0] : 'General';
-                        
+
                         const apiChannel = channelId ? apiChannelsMap.get(channelId) : null;
                         const countryCode = apiChannel ? apiChannel.country : 'XX';
                         const countryInfo = countriesMap.get(countryCode);
@@ -178,7 +178,7 @@ window.addEventListener('load', () => {
             });
         });
     };
-    
+
     const renderCategoryPills = () => {
         const iconMap = { "News": "news", "Sports": "sports_basketball", "Kids": "smart_toy", "Music": "music_note", "Movies": "theaters", "Entertainment": "theater_comedy", "Lifestyle": "restaurant", "General": "tv_gen", "Auto": "directions_car", "Animation": "person_pin", "Business": "business_center", "Classic": "history", "Comedy": "comedy_mask", "Cooking": "cooking", "Culture": "palette", "Documentary": "menu_book", "Education": "emoji_objects", "Family": "family_home", "Legislative": "gavel", "Outdoor": "hiking", "Public": "globe", "Relax": "self_improvement", "Religious": "church", "Series": "video_library", "Science": "science", "Shop": "shopping_cart", "Travel": "flight", "Weather": "thunderstorm", "Undefined": "help" };
         const defaultIcon = "apps";
@@ -264,7 +264,7 @@ window.addEventListener('load', () => {
             channelsToRender.forEach(stream => {
                 const item = document.createElement('div');
                 item.className = 'channel-list-item';
-                
+
                 const liveSensorIcon = `<span class="material-symbols-outlined">sensors</span>`;
 
                 item.innerHTML = `
@@ -277,7 +277,7 @@ window.addEventListener('load', () => {
                     </div>`;
 
                 item.addEventListener('click', () => openPlayer(stream, true));
-                
+
                 listElement.appendChild(item);
             });
 
@@ -333,17 +333,18 @@ window.addEventListener('load', () => {
         });
     };
 
-    const initPlayer = async () => {
-        shaka.polyfill.installAll();
-        if (shaka.Player.isBrowserSupported()) {
-            player = new shaka.Player(allSelectors.videoElement);
-            player.addEventListener('error', (errorEvent) => {
-                console.error('Player Error:', JSON.stringify(errorEvent, null, 2));
-            });
-            console.log("Shaka Player core initialized successfully.");
-        } else {
-            console.error('Shaka Player is not supported in this browser!');
-        }
+    const initPlayer = () => {
+        player = videojs(allSelectors.videoElement, {
+            autoplay: false,
+            controls: true,
+            fluid: true
+        });
+
+        player.on('error', () => {
+            console.error('Player Error:', player.error());
+        });
+
+        console.log("Video.js Player initialized successfully.");
     };
 
     const openPlayer = async (stream, shouldBeUnmuted = false) => {
@@ -351,16 +352,16 @@ window.addEventListener('load', () => {
             console.error("Cannot open stream, the player is not initialized.");
             return;
         }
-        
+
         activeStream = stream;
 
         document.getElementById("player-channel-name").textContent = stream.name;
         document.getElementById("player-channel-category").textContent = stream.category;
         document.title = `${stream.name} - Lingk`;
-        
+
         if (!isDesktop()) {
-            allSelectors.playerView.classList.add("active"); 
-            
+            allSelectors.playerView.classList.add("active");
+
             document.getElementById("minimized-player-logo").src = stream.logo;
             document.getElementById("minimized-player-name").textContent = stream.name;
             document.getElementById("minimized-player-category").textContent = stream.category;
@@ -369,29 +370,22 @@ window.addEventListener('load', () => {
         history.pushState({ channel: stream.name }, "", `?play=${encodeURIComponent(stream.name.replace(/\s+/g, "-"))}`);
 
         try {
-            if (!ui) {
-                ui = new shaka.ui.Overlay(player, allSelectors.playerWrapper, allSelectors.videoElement);
-                ui.configure({
-                    addSeekBar: false,
-                    fadeDelay: Infinity 
-                });
-                console.log("Shaka Player UI initialized.");
-            }
-            ui.setEnabled(true);
+            player.src({
+                src: stream.manifestUri,
+                type: 'application/x-mpegURL'
+            });
 
-            await player.load(stream.manifestUri);
-            console.log(`The video '${stream.name}' has been loaded successfully!`);
-            
             if (shouldBeUnmuted) {
-                allSelectors.videoElement.muted = false;
+                player.muted(false);
             }
-            allSelectors.videoElement.play();
+            player.play();
+            console.log(`The video '${stream.name}' has been loaded successfully!`);
 
         } catch (e) {
             console.error(`Error loading video: '${stream.name}'`, e);
         }
     };
-    
+
     const minimizePlayer = () => {
         if (isDesktop()) return;
         if (allSelectors.playerView.classList.contains("active")) {
@@ -406,7 +400,7 @@ window.addEventListener('load', () => {
         if (allSelectors.minimizedPlayer.classList.contains("active")) {
             allSelectors.minimizedPlayer.classList.remove("active");
             allSelectors.playerView.classList.add("active");
-            if (player) allSelectors.videoElement.play();
+            if (player) player.play();
         }
     };
 
@@ -414,10 +408,7 @@ window.addEventListener('load', () => {
         e.stopPropagation();
 
         if (player) {
-            player.unload();
-        }
-        if (ui) {
-            ui.setEnabled(false);
+            player.reset();
         }
         activeStream = null;
         setVideoPoster();
@@ -434,12 +425,12 @@ window.addEventListener('load', () => {
 
     const resetPlayerUI = () => {
         if (player) {
-            player.unload();
+            player.reset();
         }
-        
+
         activeStream = null;
         setVideoPoster();
-        
+
         history.pushState({}, "", window.location.pathname);
         document.title = originalTitle;
 
@@ -457,14 +448,14 @@ window.addEventListener('load', () => {
             return;
         }
 
-        await initPlayer();
+        initPlayer();
         setVideoPoster();
         setupLayout();
         window.addEventListener('resize', () => {
             setVideoPoster();
             setupLayout();
         });
-        
+
         setupHeaderScroll();
         renderMenu();
         setupMenuInteractions();
@@ -477,8 +468,11 @@ window.addEventListener('load', () => {
         allSelectors.minimizeBtn.addEventListener('click', minimizePlayer);
         allSelectors.minimizedPlayer.addEventListener('click', restorePlayer);
         allSelectors.exitBtn.addEventListener('click', closePlayer);
-        allSelectors.videoElement.addEventListener('ended', resetPlayerUI);
-        
+
+        if (player) {
+            player.on('ended', resetPlayerUI);
+        }
+
         const params = new URLSearchParams(window.location.search);
         const channelToPlay = params.get('play');
         if (channelToPlay) {
