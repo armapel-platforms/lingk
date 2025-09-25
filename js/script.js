@@ -9,7 +9,7 @@ window.addEventListener('load', () => {
         countryListPopup: document.getElementById("country-list-popup"),
         channelListingsContainer: document.getElementById("channel-listings"),
         spinner: document.getElementById("spinner"),
-        videoElement: document.getElementById("video-js-player"),
+        videoElement: document.getElementById("video-player"),
         playerWrapper: document.getElementById("video-player-wrapper"),
         playerView: document.getElementById("player-view"),
         minimizedPlayer: document.getElementById("minimized-player"),
@@ -31,19 +31,18 @@ window.addEventListener('load', () => {
     let allApiChannels = [];
     let currentFilters = { category: "All", country: "Global" };
     const isDesktop = () => window.innerWidth >= 1024;
-
+    
     const originalTitle = "Lingk - Free Global IPTV Streaming";
 
     const setVideoPoster = () => {
         if (!allSelectors.videoElement) return;
-        const posterUrl = isDesktop() ? '/logo/desktop-poster.png' : '/logo/attention.png';
-        if (player) {
-            player.poster(posterUrl);
+        if (isDesktop()) {
+            allSelectors.videoElement.poster = '/logo/desktop-poster.png';
         } else {
-            allSelectors.videoElement.poster = posterUrl;
+            allSelectors.videoElement.poster = '/logo/attention.png';
         }
     };
-
+    
     const setupLayout = () => {
         if (isDesktop()) {
             if (allSelectors.playerView) allSelectors.playerView.classList.add('active');
@@ -95,7 +94,7 @@ window.addEventListener('load', () => {
                 if (lines[i].startsWith('#EXTINF:')) {
                     const infoLine = lines[i];
                     const urlLine = lines[i + 1];
-
+                    
                     if (urlLine && urlLine.startsWith('http')) {
                         const name = infoLine.split(',').pop()?.trim() || 'Unknown';
                         const logoMatch = infoLine.match(/tvg-logo="([^"]*)"/);
@@ -108,7 +107,7 @@ window.addEventListener('load', () => {
                         }
 
                         const category = categoryMatch ? categoryMatch[1].split(';')[0] : 'General';
-
+                        
                         const apiChannel = channelId ? apiChannelsMap.get(channelId) : null;
                         const countryCode = apiChannel ? apiChannel.country : 'XX';
                         const countryInfo = countriesMap.get(countryCode);
@@ -178,7 +177,7 @@ window.addEventListener('load', () => {
             });
         });
     };
-
+    
     const renderCategoryPills = () => {
         const iconMap = { "News": "news", "Sports": "sports_basketball", "Kids": "smart_toy", "Music": "music_note", "Movies": "theaters", "Entertainment": "theater_comedy", "Lifestyle": "restaurant", "General": "tv_gen", "Auto": "directions_car", "Animation": "person_pin", "Business": "business_center", "Classic": "history", "Comedy": "comedy_mask", "Cooking": "cooking", "Culture": "palette", "Documentary": "menu_book", "Education": "emoji_objects", "Family": "family_home", "Legislative": "gavel", "Outdoor": "hiking", "Public": "globe", "Relax": "self_improvement", "Religious": "church", "Series": "video_library", "Science": "science", "Shop": "shopping_cart", "Travel": "flight", "Weather": "thunderstorm", "Undefined": "help" };
         const defaultIcon = "apps";
@@ -264,7 +263,7 @@ window.addEventListener('load', () => {
             channelsToRender.forEach(stream => {
                 const item = document.createElement('div');
                 item.className = 'channel-list-item';
-
+                
                 const liveSensorIcon = `<span class="material-symbols-outlined">sensors</span>`;
 
                 item.innerHTML = `
@@ -277,7 +276,7 @@ window.addEventListener('load', () => {
                     </div>`;
 
                 item.addEventListener('click', () => openPlayer(stream, true));
-
+                
                 listElement.appendChild(item);
             });
 
@@ -334,62 +333,80 @@ window.addEventListener('load', () => {
     };
 
     const initPlayer = () => {
-        player = videojs(allSelectors.videoElement, {
-            autoplay: false,
+        if (player) return;
+
+        const playerOptions = {
             controls: true,
-            fluid: true
-        });
+            autoplay: true,
+            muted: true,
+            preload: 'auto',
+            techOrder: ['shaka', 'html5']
+        };
 
-        player.on('error', () => {
-            console.error('Player Error:', player.error());
+        player = videojs(allSelectors.videoElement, playerOptions, () => {
+            console.log('Video.js player is ready.');
         });
-
-        console.log("Video.js Player initialized successfully.");
+        
+        player.on('fullscreenchange', async () => {
+            if (player.isFullscreen()) {
+                allSelectors.playerView.classList.add('in-fullscreen-mode');
+                if (screen.orientation && typeof screen.orientation.lock === 'function') {
+                    try {
+                        await screen.orientation.lock('landscape');
+                    } catch (err) {
+                        console.error('Screen orientation lock failed:', err);
+                    }
+                }
+            } else {
+                allSelectors.playerView.classList.remove('in-fullscreen-mode');
+                if (screen.orientation && typeof screen.orientation.unlock === 'function') {
+                    screen.orientation.unlock();
+                }
+            }
+        });
     };
-
-    const openPlayer = async (stream, shouldBeUnmuted = false) => {
-        if (!player) {
-            console.error("Cannot open stream, the player is not initialized.");
-            return;
+    
+    const openPlayer = (stream, shouldBeUnmuted = false) => {
+        initPlayer(); 
+        activeStream = stream;
+        
+        let streamType;
+        if (stream.manifestUri.endsWith('.m3u8')) {
+            streamType = 'application/x-mpegURL';
+        } else if (stream.manifestUri.endsWith('.mpd')) {
+            streamType = 'application/dash+xml';
+        } else {
+            streamType = 'video/mp4'; 
         }
 
-        activeStream = stream;
+        player.src({
+            src: stream.manifestUri,
+            type: streamType
+        });
+        
+        player.muted(!shouldBeUnmuted);
+        player.play();
 
         document.getElementById("player-channel-name").textContent = stream.name;
         document.getElementById("player-channel-category").textContent = stream.category;
-        document.title = `${stream.name} - Lingk`;
 
+        document.title = `${stream.name} - Lingk`;
+        
         if (!isDesktop()) {
             allSelectors.playerView.classList.add("active");
-
             document.getElementById("minimized-player-logo").src = stream.logo;
             document.getElementById("minimized-player-name").textContent = stream.name;
             document.getElementById("minimized-player-category").textContent = stream.category;
             allSelectors.minimizedPlayer.classList.remove("active");
         }
         history.pushState({ channel: stream.name }, "", `?play=${encodeURIComponent(stream.name.replace(/\s+/g, "-"))}`);
-
-        try {
-            player.src({
-                src: stream.manifestUri,
-                type: 'application/x-mpegURL'
-            });
-
-            if (shouldBeUnmuted) {
-                player.muted(false);
-            }
-            player.play();
-            console.log(`The video '${stream.name}' has been loaded successfully!`);
-
-        } catch (e) {
-            console.error(`Error loading video: '${stream.name}'`, e);
-        }
     };
 
-    const minimizePlayer = () => {
+   const minimizePlayer = () => {
         if (isDesktop()) return;
         if (allSelectors.playerView.classList.contains("active")) {
             allSelectors.playerView.classList.remove("active");
+
             setTimeout(() => {
                 allSelectors.minimizedPlayer.classList.add("active");
             }, 250);
@@ -413,7 +430,9 @@ window.addEventListener('load', () => {
         activeStream = null;
         setVideoPoster();
         history.pushState({}, "", window.location.pathname);
+
         document.title = originalTitle;
+
         if (isDesktop()) {
             document.getElementById('player-channel-name').textContent = 'Channel Name';
             document.getElementById('player-channel-category').textContent = 'Category';
@@ -423,39 +442,18 @@ window.addEventListener('load', () => {
         }
     };
 
-    const resetPlayerUI = () => {
-        if (player) {
-            player.reset();
-        }
-
-        activeStream = null;
-        setVideoPoster();
-
-        history.pushState({}, "", window.location.pathname);
-        document.title = originalTitle;
-
-        if (isDesktop()) {
-            document.getElementById('player-channel-name').textContent = 'Channel Name';
-            document.getElementById('player-channel-category').textContent = 'Category';
-        }
-    };
-
     async function main() {
         await fetchApiData();
         allStreams = await fetchAndProcessM3U();
-        if (allStreams.length === 0) {
-            console.log("No streams were loaded. Aborting setup.");
-            return;
-        }
+        if (allStreams.length === 0) return;
 
-        initPlayer();
         setVideoPoster();
         setupLayout();
         window.addEventListener('resize', () => {
             setVideoPoster();
             setupLayout();
         });
-
+        
         setupHeaderScroll();
         renderMenu();
         setupMenuInteractions();
@@ -468,11 +466,7 @@ window.addEventListener('load', () => {
         allSelectors.minimizeBtn.addEventListener('click', minimizePlayer);
         allSelectors.minimizedPlayer.addEventListener('click', restorePlayer);
         allSelectors.exitBtn.addEventListener('click', closePlayer);
-
-        if (player) {
-            player.on('ended', resetPlayerUI);
-        }
-
+        
         const params = new URLSearchParams(window.location.search);
         const channelToPlay = params.get('play');
         if (channelToPlay) {
