@@ -2,7 +2,7 @@
 @import url('https://fonts.cdnfonts.com/css/tt-fors-trial');
 
 :root {
-    --theme-accent-color: #98FB98;
+    --theme-accent-color: #03c04a;
     --menu-background-color: rgba(25, 25, 25, 0.5);
     --menu-border: 1px solid rgba(255, 255, 255, 0.1);
     --main-text-color: #ffffff;
@@ -392,7 +392,6 @@
 
 .shaka-settings-menu button:hover,
 .shaka-overflow-menu button:hover {
-    color: #000;
     background: var(--theme-accent-color);
     border-radius: var(--menu-hover-radius);
 }
