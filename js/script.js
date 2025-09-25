@@ -337,11 +337,9 @@ window.addEventListener('load', () => {
         shaka.polyfill.installAll();
         if (shaka.Player.isBrowserSupported()) {
             player = new shaka.Player(allSelectors.videoElement);
-            
             player.addEventListener('error', (errorEvent) => {
                 console.error('Player Error:', JSON.stringify(errorEvent, null, 2));
             });
-
             console.log("Shaka Player core initialized successfully.");
         } else {
             console.error('Shaka Player is not supported in this browser!');
@@ -361,6 +359,7 @@ window.addEventListener('load', () => {
                 ui = new shaka.ui.Overlay(player, allSelectors.playerWrapper, allSelectors.videoElement);
                 ui.configure({
                     addSeekBar: false,
+                    fadeDelay: Infinity 
                 });
                 console.log("Shaka Player UI initialized.");
             }
@@ -376,9 +375,6 @@ window.addEventListener('load', () => {
 
         } catch (e) {
             console.error(`Error loading video: '${stream.name}'`, e);
-            if (ui) {
-                ui.setEnabled(false);
-            }
         }
 
         document.getElementById("player-channel-name").textContent = stream.name;
@@ -394,12 +390,11 @@ window.addEventListener('load', () => {
         }
         history.pushState({ channel: stream.name }, "", `?play=${encodeURIComponent(stream.name.replace(/\s+/g, "-"))}`);
     };
-
+    
     const minimizePlayer = () => {
         if (isDesktop()) return;
         if (allSelectors.playerView.classList.contains("active")) {
             allSelectors.playerView.classList.remove("active");
-
             setTimeout(() => {
                 allSelectors.minimizedPlayer.classList.add("active");
             }, 250);
@@ -420,17 +415,13 @@ window.addEventListener('load', () => {
         if (player) {
             player.unload();
         }
-
         if (ui) {
             ui.setEnabled(false);
         }
-
         activeStream = null;
         setVideoPoster();
         history.pushState({}, "", window.location.pathname);
-
         document.title = originalTitle;
-
         if (isDesktop()) {
             document.getElementById('player-channel-name').textContent = 'Channel Name';
             document.getElementById('player-channel-category').textContent = 'Category';
@@ -449,7 +440,6 @@ window.addEventListener('load', () => {
         }
 
         await initPlayer();
-
         setVideoPoster();
         setupLayout();
         window.addEventListener('resize', () => {
