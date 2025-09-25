@@ -461,6 +461,11 @@ window.addEventListener('load', () => {
         allSelectors.minimizedPlayer.addEventListener('click', restorePlayer);
         allSelectors.exitBtn.addEventListener('click', closePlayer);
         
+        allSelectors.videoElement.addEventListener('ended', (e) => {
+            console.log("Stream ended, closing player to prevent replay icon.");
+            closePlayer(e);
+        });
+        
         const params = new URLSearchParams(window.location.search);
         const channelToPlay = params.get('play');
         if (channelToPlay) {
