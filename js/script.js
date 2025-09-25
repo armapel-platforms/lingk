@@ -337,8 +337,8 @@ window.addEventListener('load', () => {
 
         const playerOptions = {
             controls: true,
-            autoplay: true,
-            muted: true,
+            autoplay: false, // Set autoplay to false initially
+            muted: false,
             preload: 'auto',
             techOrder: ['shaka', 'html5']
         };
@@ -367,7 +367,6 @@ window.addEventListener('load', () => {
     };
     
     const openPlayer = (stream, shouldBeUnmuted = false) => {
-        initPlayer(); 
         activeStream = stream;
         
         let streamType;
@@ -376,6 +375,7 @@ window.addEventListener('load', () => {
         } else if (stream.manifestUri.endsWith('.mpd')) {
             streamType = 'application/dash+xml';
         } else {
+            // A fallback for other types, though most will be HLS/DASH
             streamType = 'video/mp4'; 
         }
 
@@ -384,8 +384,19 @@ window.addEventListener('load', () => {
             type: streamType
         });
         
-        player.muted(!shouldBeUnmuted);
-        player.play();
+        // Ensure the player attempts to play
+        player.ready(() => {
+            player.muted(!shouldBeUnmuted);
+            const playPromise = player.play();
+            if (playPromise !== undefined) {
+                playPromise.catch(error => {
+                    console.error("Playback was prevented:", error);
+                    // Muted autoplay is usually allowed, so try that as a fallback
+                    player.muted(true);
+                    player.play();
+                });
+            }
+        });
 
         document.getElementById("player-channel-name").textContent = stream.name;
         document.getElementById("player-channel-category").textContent = stream.category;
@@ -449,6 +460,8 @@ window.addEventListener('load', () => {
 
         setVideoPoster();
         setupLayout();
+        initPlayer(); // Initialize the player once on load
+
         window.addEventListener('resize', () => {
             setVideoPoster();
             setupLayout();
