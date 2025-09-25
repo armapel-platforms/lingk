@@ -353,7 +353,21 @@ window.addEventListener('load', () => {
         }
         
         activeStream = stream;
+
+        document.getElementById("player-channel-name").textContent = stream.name;
+        document.getElementById("player-channel-category").textContent = stream.category;
+        document.title = `${stream.name} - Lingk`;
         
+        if (!isDesktop()) {
+            allSelectors.playerView.classList.add("active"); 
+            
+            document.getElementById("minimized-player-logo").src = stream.logo;
+            document.getElementById("minimized-player-name").textContent = stream.name;
+            document.getElementById("minimized-player-category").textContent = stream.category;
+            allSelectors.minimizedPlayer.classList.remove("active");
+        }
+        history.pushState({ channel: stream.name }, "", `?play=${encodeURIComponent(stream.name.replace(/\s+/g, "-"))}`);
+
         try {
             if (!ui) {
                 ui = new shaka.ui.Overlay(player, allSelectors.playerWrapper, allSelectors.videoElement);
@@ -376,19 +390,6 @@ window.addEventListener('load', () => {
         } catch (e) {
             console.error(`Error loading video: '${stream.name}'`, e);
         }
-
-        document.getElementById("player-channel-name").textContent = stream.name;
-        document.getElementById("player-channel-category").textContent = stream.category;
-        document.title = `${stream.name} - Lingk`;
-        
-        if (!isDesktop()) {
-            allSelectors.playerView.classList.add("active");
-            document.getElementById("minimized-player-logo").src = stream.logo;
-            document.getElementById("minimized-player-name").textContent = stream.name;
-            document.getElementById("minimized-player-category").textContent = stream.category;
-            allSelectors.minimizedPlayer.classList.remove("active");
-        }
-        history.pushState({ channel: stream.name }, "", `?play=${encodeURIComponent(stream.name.replace(/\s+/g, "-"))}`);
     };
     
     const minimizePlayer = () => {
