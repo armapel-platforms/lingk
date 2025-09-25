@@ -22,6 +22,7 @@ window.addEventListener('load', () => {
     };
 
     let player = null;
+    let ui = null;
     let activeStream = null;
     const CHANNELS_PER_PAGE = 50;
     let currentlyDisplayedCount = 0;
@@ -332,60 +333,39 @@ window.addEventListener('load', () => {
         });
     };
 
-    const initPlayer = () => {
-        if (player) return;
-
-        const playerOptions = {
-            controls: true,
-            autoplay: true,
-            muted: true,
-            preload: 'auto',
-            techOrder: ['shaka', 'html5']
-        };
-
-        player = videojs(allSelectors.videoElement, playerOptions, () => {
-            console.log('Video.js player is ready.');
-        });
-        
-        player.on('fullscreenchange', async () => {
-            if (player.isFullscreen()) {
-                allSelectors.playerView.classList.add('in-fullscreen-mode');
-                if (screen.orientation && typeof screen.orientation.lock === 'function') {
-                    try {
-                        await screen.orientation.lock('landscape');
-                    } catch (err) {
-                        console.error('Screen orientation lock failed:', err);
-                    }
-                }
-            } else {
-                allSelectors.playerView.classList.remove('in-fullscreen-mode');
-                if (screen.orientation && typeof screen.orientation.unlock === 'function') {
-                    screen.orientation.unlock();
-                }
-            }
-        });
+    const initPlayer = async () => {
+        debugger;
+        shaka.polyfill.installAll();
+        if (shaka.Player.isBrowserSupported()) {
+            player = new shaka.Player();
+            await player.attach(videoElement);
+    
+            ui = new shaka.ui.Overlay(player, playerWrapper, videoElement);
+            
+            ui.configure({
+                addSeekBar: false,
+            });
+    
+            player.addEventListener('error', onError);
+        } else {
+            console.error('Browser not supported!');
+        }
     };
     
-    const openPlayer = (stream, shouldBeUnmuted = false) => {
-        initPlayer(); 
+    const openPlayer = async (stream, shouldBeUnmuted = false) => {
+        await initPlayer(); 
         activeStream = stream;
         
-        let streamType;
-        if (stream.manifestUri.endsWith('.m3u8')) {
-            streamType = 'application/x-mpegURL';
-        } else if (stream.manifestUri.endsWith('.mpd')) {
-            streamType = 'application/dash+xml';
-        } else {
-            streamType = 'video/mp4'; 
+        try {
+            await player.load(stream.manifestUri);
+            console.log('The video has been loaded successfully!');
+            if (shouldBeUnmuted) {
+                allSelectors.videoElement.muted = false;
+            }
+            allSelectors.videoElement.play();
+        } catch (e) {
+            console.error('Error loading video:', e);
         }
-
-        player.src({
-            src: stream.manifestUri,
-            type: streamType
-        });
-        
-        player.muted(!shouldBeUnmuted);
-        player.play();
 
         document.getElementById("player-channel-name").textContent = stream.name;
         document.getElementById("player-channel-category").textContent = stream.category;
@@ -417,7 +397,7 @@ window.addEventListener('load', () => {
         if (allSelectors.minimizedPlayer.classList.contains("active")) {
             allSelectors.minimizedPlayer.classList.remove("active");
             allSelectors.playerView.classList.add("active");
-            if (player) player.play();
+            if (player) allSelectors.videoElement.play();
         }
     };
 
@@ -425,7 +405,7 @@ window.addEventListener('load', () => {
         e.stopPropagation();
 
         if (player) {
-            player.reset();
+            player.unload();
         }
         activeStream = null;
         setVideoPoster();
