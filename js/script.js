@@ -333,38 +333,21 @@ window.addEventListener('load', () => {
         });
     };
 
-    // --- Start of Corrected Code ---
-
-    /**
-     * Change: This function is now designed to be called only ONCE.
-     * It initializes the Shaka Player, attaches it to the video element,
-     * sets up the UI, and adds an error listener.
-     */
     const initPlayer = async () => {
         shaka.polyfill.installAll();
         if (shaka.Player.isBrowserSupported()) {
             player = new shaka.Player(allSelectors.videoElement);
-            ui = new shaka.ui.Overlay(player, allSelectors.playerWrapper, allSelectors.videoElement);
             
-            ui.configure({
-                addSeekBar: false, // You can configure UI elements here
-            });
-    
             player.addEventListener('error', (errorEvent) => {
-                // Log detailed error information for debugging
                 console.error('Player Error:', JSON.stringify(errorEvent, null, 2));
             });
-            console.log("Shaka Player initialized successfully.");
+
+            console.log("Shaka Player core initialized successfully.");
         } else {
             console.error('Shaka Player is not supported in this browser!');
         }
     };
-    
-    /**
-     * Change: This function no longer calls initPlayer().
-     * It now assumes the player is already initialized and just loads the
-     * new stream's URL into the existing player instance.
-     */
+
     const openPlayer = async (stream, shouldBeUnmuted = false) => {
         if (!player) {
             console.error("Cannot open stream, the player is not initialized.");
@@ -374,18 +357,30 @@ window.addEventListener('load', () => {
         activeStream = stream;
         
         try {
+            if (!ui) {
+                ui = new shaka.ui.Overlay(player, allSelectors.playerWrapper, allSelectors.videoElement);
+                ui.configure({
+                    addSeekBar: false,
+                });
+                console.log("Shaka Player UI initialized.");
+            }
+            ui.setEnabled(true);
+
             await player.load(stream.manifestUri);
             console.log(`The video '${stream.name}' has been loaded successfully!`);
+            
             if (shouldBeUnmuted) {
                 allSelectors.videoElement.muted = false;
             }
             allSelectors.videoElement.play();
+
         } catch (e) {
             console.error(`Error loading video: '${stream.name}'`, e);
-            // Optionally, provide feedback to the user on the UI
+            if (ui) {
+                ui.setEnabled(false);
+            }
         }
 
-        // Update UI elements with the new stream's info
         document.getElementById("player-channel-name").textContent = stream.name;
         document.getElementById("player-channel-category").textContent = stream.category;
         document.title = `${stream.name} - Lingk`;
@@ -399,8 +394,6 @@ window.addEventListener('load', () => {
         }
         history.pushState({ channel: stream.name }, "", `?play=${encodeURIComponent(stream.name.replace(/\s+/g, "-"))}`);
     };
-
-    // --- End of Corrected Code ---
 
     const minimizePlayer = () => {
         if (isDesktop()) return;
@@ -427,6 +420,11 @@ window.addEventListener('load', () => {
         if (player) {
             player.unload();
         }
+
+        if (ui) {
+            ui.setEnabled(false);
+        }
+
         activeStream = null;
         setVideoPoster();
         history.pushState({}, "", window.location.pathname);
@@ -450,7 +448,6 @@ window.addEventListener('load', () => {
             return;
         }
 
-        // Change: Initialize the player once after fetching data and before setting up UI.
         await initPlayer();
 
         setVideoPoster();
@@ -460,7 +457,6 @@ window.addEventListener('load', () => {
             setupLayout();
         });
         
-        // Setup all event listeners and render initial content
         setupHeaderScroll();
         renderMenu();
         setupMenuInteractions();
@@ -474,7 +470,6 @@ window.addEventListener('load', () => {
         allSelectors.minimizedPlayer.addEventListener('click', restorePlayer);
         allSelectors.exitBtn.addEventListener('click', closePlayer);
         
-        // Check for a channel to autoplay from the URL
         const params = new URLSearchParams(window.location.search);
         const channelToPlay = params.get('play');
         if (channelToPlay) {
