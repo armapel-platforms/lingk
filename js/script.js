@@ -22,7 +22,6 @@ window.addEventListener('load', () => {
     };
 
     let player = null;
-    let ui = null;
     let activeStream = null;
     const CHANNELS_PER_PAGE = 50;
     let currentlyDisplayedCount = 0;
@@ -333,52 +332,64 @@ window.addEventListener('load', () => {
         });
     };
 
-    const initPlayer = async () => {
-        shaka.polyfill.installAll();
-        if (shaka.Player.isBrowserSupported()) {
-            player = new shaka.Player(allSelectors.videoElement);
-            player.addEventListener('error', (errorEvent) => {
-                console.error('Player Error:', JSON.stringify(errorEvent, null, 2));
-            });
-            console.log("Shaka Player core initialized successfully.");
-        } else {
-            console.error('Shaka Player is not supported in this browser!');
-        }
-    };
+    const initPlayer = () => {
+        if (player) return;
 
-    const openPlayer = async (stream, shouldBeUnmuted = false) => {
-        if (!player) {
-            console.error("Cannot open stream, the player is not initialized.");
-            return;
-        }
+        const playerOptions = {
+            controls: true,
+            autoplay: true,
+            muted: true,
+            preload: 'auto',
+            techOrder: ['shaka', 'html5']
+        };
+
+        player = videojs(allSelectors.videoElement, playerOptions, () => {
+            console.log('Video.js player is ready.');
+        });
         
+        player.on('fullscreenchange', async () => {
+            if (player.isFullscreen()) {
+                allSelectors.playerView.classList.add('in-fullscreen-mode');
+                if (screen.orientation && typeof screen.orientation.lock === 'function') {
+                    try {
+                        await screen.orientation.lock('landscape');
+                    } catch (err) {
+                        console.error('Screen orientation lock failed:', err);
+                    }
+                }
+            } else {
+                allSelectors.playerView.classList.remove('in-fullscreen-mode');
+                if (screen.orientation && typeof screen.orientation.unlock === 'function') {
+                    screen.orientation.unlock();
+                }
+            }
+        });
+    };
+    
+    const openPlayer = (stream, shouldBeUnmuted = false) => {
+        initPlayer(); 
         activeStream = stream;
         
-        try {
-            if (!ui) {
-                ui = new shaka.ui.Overlay(player, allSelectors.playerWrapper, allSelectors.videoElement);
-                ui.configure({
-                    addSeekBar: false,
-                    fadeDelay: Infinity 
-                });
-                console.log("Shaka Player UI initialized.");
-            }
-            ui.setEnabled(true);
-
-            await player.load(stream.manifestUri);
-            console.log(`The video '${stream.name}' has been loaded successfully!`);
-            
-            if (shouldBeUnmuted) {
-                allSelectors.videoElement.muted = false;
-            }
-            allSelectors.videoElement.play();
-
-        } catch (e) {
-            console.error(`Error loading video: '${stream.name}'`, e);
+        let streamType;
+        if (stream.manifestUri.endsWith('.m3u8')) {
+            streamType = 'application/x-mpegURL';
+        } else if (stream.manifestUri.endsWith('.mpd')) {
+            streamType = 'application/dash+xml';
+        } else {
+            streamType = 'video/mp4'; 
         }
+
+        player.src({
+            src: stream.manifestUri,
+            type: streamType
+        });
+        
+        player.muted(!shouldBeUnmuted);
+        player.play();
 
         document.getElementById("player-channel-name").textContent = stream.name;
         document.getElementById("player-channel-category").textContent = stream.category;
+
         document.title = `${stream.name} - Lingk`;
         
         if (!isDesktop()) {
@@ -390,11 +401,12 @@ window.addEventListener('load', () => {
         }
         history.pushState({ channel: stream.name }, "", `?play=${encodeURIComponent(stream.name.replace(/\s+/g, "-"))}`);
     };
-    
-    const minimizePlayer = () => {
+
+   const minimizePlayer = () => {
         if (isDesktop()) return;
         if (allSelectors.playerView.classList.contains("active")) {
             allSelectors.playerView.classList.remove("active");
+
             setTimeout(() => {
                 allSelectors.minimizedPlayer.classList.add("active");
             }, 250);
@@ -405,7 +417,7 @@ window.addEventListener('load', () => {
         if (allSelectors.minimizedPlayer.classList.contains("active")) {
             allSelectors.minimizedPlayer.classList.remove("active");
             allSelectors.playerView.classList.add("active");
-            if (player) allSelectors.videoElement.play();
+            if (player) player.play();
         }
     };
 
@@ -413,15 +425,14 @@ window.addEventListener('load', () => {
         e.stopPropagation();
 
         if (player) {
-            player.unload();
-        }
-        if (ui) {
-            ui.setEnabled(false);
+            player.reset();
         }
         activeStream = null;
         setVideoPoster();
         history.pushState({}, "", window.location.pathname);
+
         document.title = originalTitle;
+
         if (isDesktop()) {
             document.getElementById('player-channel-name').textContent = 'Channel Name';
             document.getElementById('player-channel-category').textContent = 'Category';
@@ -434,12 +445,8 @@ window.addEventListener('load', () => {
     async function main() {
         await fetchApiData();
         allStreams = await fetchAndProcessM3U();
-        if (allStreams.length === 0) {
-            console.log("No streams were loaded. Aborting setup.");
-            return;
-        }
+        if (allStreams.length === 0) return;
 
-        await initPlayer();
         setVideoPoster();
         setupLayout();
         window.addEventListener('resize', () => {
