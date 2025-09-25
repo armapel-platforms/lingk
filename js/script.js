@@ -334,21 +334,25 @@ window.addEventListener('load', () => {
     };
 
     const initPlayer = async () => {
-        debugger;
+        if (player) return;
+
         shaka.polyfill.installAll();
         if (shaka.Player.isBrowserSupported()) {
-            player = new shaka.Player();
-            await player.attach(videoElement);
-    
-            ui = new shaka.ui.Overlay(player, playerWrapper, videoElement);
+            player = new shaka.Player(allSelectors.videoElement);
+            console.log('Shaka Player initialized.');
+
+            const uiConfig = {
+                'controlPanelElements': [
+                    'play_pause', 'time_and_duration', 'spacer', 'volume',
+                    'fullscreen', 'overflow_menu'
+                ],
+                'overflowMenuButtons': ['cast', 'quality', 'language', 'picture_in_picture']
+            };
+            ui = new shaka.ui.Overlay(player, allSelectors.playerWrapper, allSelectors.videoElement);
+            ui.configure(uiConfig);
             
-            ui.configure({
-                addSeekBar: false,
-            });
-    
-            player.addEventListener('error', onError);
         } else {
-            console.error('Browser not supported!');
+            console.error('Browser not supported by Shaka Player.');
         }
     };
     
