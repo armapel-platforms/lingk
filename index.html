@@ -16,9 +16,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.cdnfonts.com/css/tt-fors-trial" rel="stylesheet">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,200,0..1,0" />
-    <script src="https://cdn.jsdelivr.net/npm/shaka-player@4.16.2/dist/shaka-player.ui.min.js"></script>
-    <link href="https://cdn.jsdelivr.net/npm/shaka-player@4.16.2/dist/controls.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="/css/shaka.css">
+    <link href="https://vjs.zencdn.net/8.10.0/video-js.css" rel="stylesheet" />
     <link rel="stylesheet" href="/css/style.css">
     <link rel="stylesheet" href="/css/desktop.css">
 </head>
@@ -55,7 +53,8 @@
                     <button id="minimize-player-btn" class="icon-link"><span class="material-symbols-outlined">expand_more</span></button>
                 </div>
                 <div class="video-player-container" id="video-player-wrapper">
-                    <video id="video-player"></video>
+                    <video id="video-js-player" class="video-js vjs-default-skin" controls preload="auto" width="640" height="264">
+                    </video>
                 </div>
                 <div class="player-info">
                     <div class="player-info-left">
@@ -84,7 +83,7 @@
                             <div class="slide-content">
                                 <h2 class="slide-title">Build and deploy on the AI Cloud.</h2>
                                 <p class="slide-description">Vercel Inc.</p><div class="slide-sponsored visit-badge">SPONSORED</div>
-                            </div> 
+                            </div>
                         </a>
                       </div>
                     <div class="slider-nav">
@@ -92,20 +91,20 @@
                         <button class="dot"></button>
                     </div>
                 </section>
-        
+
                 <section id="category-nav" class="category-nav">
                     <div class="category-pills">
                     </div>
                 </section>
-        
+
                 <h2 id="channel-list-header" class="section-header">All Channels</h2>
-        
+
                 <section id="channel-listings" class="channel-listings">
                     <div class="spinner-container" id="spinner">
                         <div class="spinner"></div>
                     </div>
                 </section>
-        
+
                 <div id="load-more-container" class="load-more-container">
                     <button id="load-more-btn" class="load-more-btn">Load More</button>
                 </div>
@@ -120,7 +119,7 @@
             </div>
         </div>
     </main>
-    
+
     <div id="minimized-player" class="minimized-player">
         <div class="minimized-player-left">
             <img id="minimized-player-logo" src="" alt="Channel Logo" class="minimized-logo" onerror="this.src='logo/favicon.svg';">
@@ -134,7 +133,7 @@
             <button id="exit-player-btn" class="icon-link-mini"><span class="material-symbols-outlined">close</span></button>
         </div>
     </div>
-
+    <script src="https://vjs.zencdn.net/8.10.0/video.min.js"></script>
     <script src="/js/script.js"></script>
 </body>
 </html>
