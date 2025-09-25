@@ -235,7 +235,7 @@ header.subpage-header h1 {
     color: var(--text-secondary); transition: all 0.3s ease; cursor: pointer; border: none;
 }
 .pill.active { background-color: var(--theme-color); color: #000; }
-.pill .material-symbols-outlined { font-size: 26px; transition: transform 0.2s; }
+.pill .material-symbols-outlined { transition: transform 0.2s; }
 .pill.active .material-symbols-outlined {
     transform: scale(1.1);
     font-variation-settings: 'FILL' 1;
