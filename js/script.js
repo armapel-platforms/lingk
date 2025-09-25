@@ -337,7 +337,7 @@ window.addEventListener('load', () => {
 
         const playerOptions = {
             controls: true,
-            autoplay: false, // Set autoplay to false initially
+            autoplay: false,
             muted: false,
             preload: 'auto',
             techOrder: ['shaka', 'html5']
@@ -345,6 +345,16 @@ window.addEventListener('load', () => {
 
         player = videojs(allSelectors.videoElement, playerOptions, () => {
             console.log('Video.js player is ready.');
+        });
+        
+        // ADDED: Graceful error handling for dead streams
+        player.on('error', function() {
+            const error = player.error();
+            console.error('Video.js Error:', error.message);
+            const errorDisplay = player.getChild('errorDisplay');
+            if (errorDisplay) {
+                errorDisplay.update("This stream is currently unavailable or may be restricted in your region. Please try another channel.");
+            }
         });
         
         player.on('fullscreenchange', async () => {
@@ -367,6 +377,9 @@ window.addEventListener('load', () => {
     };
     
     const openPlayer = (stream, shouldBeUnmuted = false) => {
+        // ADDED: Save current stream to session storage
+        sessionStorage.setItem('activeLingkStream', JSON.stringify(stream));
+        
         activeStream = stream;
         
         let streamType;
@@ -375,7 +388,6 @@ window.addEventListener('load', () => {
         } else if (stream.manifestUri.endsWith('.mpd')) {
             streamType = 'application/dash+xml';
         } else {
-            // A fallback for other types, though most will be HLS/DASH
             streamType = 'video/mp4'; 
         }
 
@@ -384,7 +396,6 @@ window.addEventListener('load', () => {
             type: streamType
         });
         
-        // Ensure the player attempts to play
         player.ready(() => {
             player.muted(!shouldBeUnmuted);
             const playPromise = player.play();
@@ -400,7 +411,6 @@ window.addEventListener('load', () => {
 
         document.getElementById("player-channel-name").textContent = stream.name;
         document.getElementById("player-channel-category").textContent = stream.category;
-
         document.title = `${stream.name} - Lingk`;
         
         if (!isDesktop()) {
@@ -413,16 +423,16 @@ window.addEventListener('load', () => {
         history.pushState({ channel: stream.name }, "", `?play=${encodeURIComponent(stream.name.replace(/\s+/g, "-"))}`);
     };
 
-   const minimizePlayer = () => {
+    const minimizePlayer = () => {
         if (isDesktop()) return;
         if (allSelectors.playerView.classList.contains("active")) {
             allSelectors.playerView.classList.remove("active");
-
             setTimeout(() => {
                 allSelectors.minimizedPlayer.classList.add("active");
             }, 250);
         }
     };
+
     const restorePlayer = (e) => {
         if (isDesktop() || e.target.closest("#exit-player-btn")) return;
         if (allSelectors.minimizedPlayer.classList.contains("active")) {
@@ -441,6 +451,9 @@ window.addEventListener('load', () => {
         activeStream = null;
         setVideoPoster();
         history.pushState({}, "", window.location.pathname);
+        
+        // ADDED: Clear session storage when player is manually closed
+        sessionStorage.removeItem('activeLingkStream');
 
         document.title = originalTitle;
 
@@ -460,7 +473,7 @@ window.addEventListener('load', () => {
 
         setVideoPoster();
         setupLayout();
-        initPlayer(); // Initialize the player once on load
+        initPlayer();
 
         window.addEventListener('resize', () => {
             setVideoPoster();
@@ -480,12 +493,25 @@ window.addEventListener('load', () => {
         allSelectors.minimizedPlayer.addEventListener('click', restorePlayer);
         allSelectors.exitBtn.addEventListener('click', closePlayer);
         
+        // UPDATED: Logic to restore a channel from URL or session storage on page load
         const params = new URLSearchParams(window.location.search);
-        const channelToPlay = params.get('play');
-        if (channelToPlay) {
-            const streamToPlay = allStreams.find(s => s.name.replace(/\s+/g, '-') === channelToPlay);
+        const channelToPlayFromUrl = params.get('play');
+        const savedStreamJSON = sessionStorage.getItem('activeLingkStream');
+
+        if (channelToPlayFromUrl) {
+            const streamToPlay = allStreams.find(s => s.name.replace(/\s+/g, '-') === channelToPlayFromUrl);
             if (streamToPlay) {
                 openPlayer(streamToPlay, true);
+            }
+        } else if (savedStreamJSON) {
+            try {
+                const streamToPlay = JSON.parse(savedStreamJSON);
+                if (streamToPlay && streamToPlay.manifestUri) {
+                     openPlayer(streamToPlay, true); // Attempt to play unmuted
+                }
+            } catch (e) {
+                console.error("Failed to parse saved stream from sessionStorage", e);
+                sessionStorage.removeItem('activeLingkStream');
             }
         }
     }
