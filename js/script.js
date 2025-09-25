@@ -22,6 +22,7 @@ window.addEventListener('load', () => {
     };
 
     let player = null;
+    let ui = null;
     let activeStream = null;
     const CHANNELS_PER_PAGE = 50;
     let currentlyDisplayedCount = 0;
@@ -332,82 +333,49 @@ window.addEventListener('load', () => {
         });
     };
 
-    const initPlayer = () => {
-        if (player) return;
-
-        const playerOptions = {
-            controls: true,
-            autoplay: false,
-            muted: false,
-            preload: 'auto',
-            techOrder: ['shaka', 'html5']
-        };
-
-        player = videojs(allSelectors.videoElement, playerOptions, () => {
-            console.log('Video.js player is ready.');
-        });
-        
-        // ADDED: Graceful error handling for dead streams
-        player.on('error', function() {
-            const error = player.error();
-            console.error('Video.js Error:', error.message);
-            const errorDisplay = player.getChild('errorDisplay');
-            if (errorDisplay) {
-                errorDisplay.update("This stream is currently unavailable or may be restricted in your region. Please try another channel.");
-            }
-        });
-        
-        player.on('fullscreenchange', async () => {
-            if (player.isFullscreen()) {
-                allSelectors.playerView.classList.add('in-fullscreen-mode');
-                if (screen.orientation && typeof screen.orientation.lock === 'function') {
-                    try {
-                        await screen.orientation.lock('landscape');
-                    } catch (err) {
-                        console.error('Screen orientation lock failed:', err);
-                    }
-                }
-            } else {
-                allSelectors.playerView.classList.remove('in-fullscreen-mode');
-                if (screen.orientation && typeof screen.orientation.unlock === 'function') {
-                    screen.orientation.unlock();
-                }
-            }
-        });
+    const initPlayer = async () => {
+        shaka.polyfill.installAll();
+        if (shaka.Player.isBrowserSupported()) {
+            player = new shaka.Player(allSelectors.videoElement);
+            player.addEventListener('error', (errorEvent) => {
+                console.error('Player Error:', JSON.stringify(errorEvent, null, 2));
+            });
+            console.log("Shaka Player core initialized successfully.");
+        } else {
+            console.error('Shaka Player is not supported in this browser!');
+        }
     };
-    
-    const openPlayer = (stream, shouldBeUnmuted = false) => {
-        // ADDED: Save current stream to session storage
-        sessionStorage.setItem('activeLingkStream', JSON.stringify(stream));
+
+    const openPlayer = async (stream, shouldBeUnmuted = false) => {
+        if (!player) {
+            console.error("Cannot open stream, the player is not initialized.");
+            return;
+        }
         
         activeStream = stream;
         
-        let streamType;
-        if (stream.manifestUri.endsWith('.m3u8')) {
-            streamType = 'application/x-mpegURL';
-        } else if (stream.manifestUri.endsWith('.mpd')) {
-            streamType = 'application/dash+xml';
-        } else {
-            streamType = 'video/mp4'; 
-        }
-
-        player.src({
-            src: stream.manifestUri,
-            type: streamType
-        });
-        
-        player.ready(() => {
-            player.muted(!shouldBeUnmuted);
-            const playPromise = player.play();
-            if (playPromise !== undefined) {
-                playPromise.catch(error => {
-                    console.error("Playback was prevented:", error);
-                    // Muted autoplay is usually allowed, so try that as a fallback
-                    player.muted(true);
-                    player.play();
+        try {
+            if (!ui) {
+                ui = new shaka.ui.Overlay(player, allSelectors.playerWrapper, allSelectors.videoElement);
+                ui.configure({
+                    addSeekBar: false,
+                    fadeDelay: Infinity 
                 });
+                console.log("Shaka Player UI initialized.");
             }
-        });
+            ui.setEnabled(true);
+
+            await player.load(stream.manifestUri);
+            console.log(`The video '${stream.name}' has been loaded successfully!`);
+            
+            if (shouldBeUnmuted) {
+                allSelectors.videoElement.muted = false;
+            }
+            allSelectors.videoElement.play();
+
+        } catch (e) {
+            console.error(`Error loading video: '${stream.name}'`, e);
+        }
 
         document.getElementById("player-channel-name").textContent = stream.name;
         document.getElementById("player-channel-category").textContent = stream.category;
@@ -422,7 +390,7 @@ window.addEventListener('load', () => {
         }
         history.pushState({ channel: stream.name }, "", `?play=${encodeURIComponent(stream.name.replace(/\s+/g, "-"))}`);
     };
-
+    
     const minimizePlayer = () => {
         if (isDesktop()) return;
         if (allSelectors.playerView.classList.contains("active")) {
@@ -432,13 +400,12 @@ window.addEventListener('load', () => {
             }, 250);
         }
     };
-
     const restorePlayer = (e) => {
         if (isDesktop() || e.target.closest("#exit-player-btn")) return;
         if (allSelectors.minimizedPlayer.classList.contains("active")) {
             allSelectors.minimizedPlayer.classList.remove("active");
             allSelectors.playerView.classList.add("active");
-            if (player) player.play();
+            if (player) allSelectors.videoElement.play();
         }
     };
 
@@ -446,17 +413,15 @@ window.addEventListener('load', () => {
         e.stopPropagation();
 
         if (player) {
-            player.reset();
+            player.unload();
+        }
+        if (ui) {
+            ui.setEnabled(false);
         }
         activeStream = null;
         setVideoPoster();
         history.pushState({}, "", window.location.pathname);
-        
-        // ADDED: Clear session storage when player is manually closed
-        sessionStorage.removeItem('activeLingkStream');
-
         document.title = originalTitle;
-
         if (isDesktop()) {
             document.getElementById('player-channel-name').textContent = 'Channel Name';
             document.getElementById('player-channel-category').textContent = 'Category';
@@ -469,12 +434,14 @@ window.addEventListener('load', () => {
     async function main() {
         await fetchApiData();
         allStreams = await fetchAndProcessM3U();
-        if (allStreams.length === 0) return;
+        if (allStreams.length === 0) {
+            console.log("No streams were loaded. Aborting setup.");
+            return;
+        }
 
+        await initPlayer();
         setVideoPoster();
         setupLayout();
-        initPlayer();
-
         window.addEventListener('resize', () => {
             setVideoPoster();
             setupLayout();
@@ -493,25 +460,12 @@ window.addEventListener('load', () => {
         allSelectors.minimizedPlayer.addEventListener('click', restorePlayer);
         allSelectors.exitBtn.addEventListener('click', closePlayer);
         
-        // UPDATED: Logic to restore a channel from URL or session storage on page load
         const params = new URLSearchParams(window.location.search);
-        const channelToPlayFromUrl = params.get('play');
-        const savedStreamJSON = sessionStorage.getItem('activeLingkStream');
-
-        if (channelToPlayFromUrl) {
-            const streamToPlay = allStreams.find(s => s.name.replace(/\s+/g, '-') === channelToPlayFromUrl);
+        const channelToPlay = params.get('play');
+        if (channelToPlay) {
+            const streamToPlay = allStreams.find(s => s.name.replace(/\s+/g, '-') === channelToPlay);
             if (streamToPlay) {
                 openPlayer(streamToPlay, true);
-            }
-        } else if (savedStreamJSON) {
-            try {
-                const streamToPlay = JSON.parse(savedStreamJSON);
-                if (streamToPlay && streamToPlay.manifestUri) {
-                     openPlayer(streamToPlay, true); // Attempt to play unmuted
-                }
-            } catch (e) {
-                console.error("Failed to parse saved stream from sessionStorage", e);
-                sessionStorage.removeItem('activeLingkStream');
             }
         }
     }
