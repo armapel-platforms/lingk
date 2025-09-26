@@ -33,7 +33,7 @@
 
     .video-player-container {
         max-width: none;
-        margin: 0;
+        margin: auto;
         align-items: center;
         justify-content: center;
     }
