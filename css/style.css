@@ -446,12 +446,12 @@ header nav {
 }
 
 .pill .material-symbols-outlined {
-    transition: transform 0.2s;
+    font-variation-settings: 'FILL' 0;
+    transition: font-variation-settings 0.3s;
 }
 
 .pill.active .material-symbols-outlined {
     font-variation-settings: "FILL" 1;
-    transform: scale(1.1);
 }
 
 main.subpage-content {
