@@ -365,7 +365,7 @@ header nav {
 .slide-badge {
     background-color: var(--theme-color);
     border-radius: 5px;
-    color: #000;
+    color: var(--text-color);
     display: inline-block;
     font-size: 0.4rem;
     font-weight: 500;
@@ -442,7 +442,7 @@ header nav {
 
 .pill.active {
     background-color: var(--theme-color);
-    color: #000;
+    color: white;
 }
 
 .pill .material-symbols-outlined {
